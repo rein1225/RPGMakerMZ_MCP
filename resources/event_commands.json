@@ -1,0 +1,296 @@
+{
+    "101": {
+        "name": "文章の表示",
+        "description": "メッセージウィンドウにテキストを表示します",
+        "parameters": [
+            {
+                "index": 0,
+                "name": "FaceImageName",
+                "type": "string",
+                "desc": "顔グラフィックのファイル名"
+            },
+            {
+                "index": 1,
+                "name": "FaceImageIndex",
+                "type": "number",
+                "desc": "顔グラフィックのインデックス(0-7)"
+            },
+            {
+                "index": 2,
+                "name": "Background",
+                "type": "number",
+                "desc": "0:ウィンドウ, 1:暗くする, 2:透明"
+            },
+            {
+                "index": 3,
+                "name": "PositionType",
+                "type": "number",
+                "desc": "0:上, 1:中, 2:下"
+            }
+        ],
+        "next": "code 401でテキスト行を続ける"
+    },
+    "401": {
+        "name": "文章の表示（続き）",
+        "description": "code 101の後に続くテキスト行",
+        "parameters": [
+            {
+                "index": 0,
+                "name": "Text",
+                "type": "string",
+                "desc": "表示するテキスト"
+            }
+        ]
+    },
+    "102": {
+        "name": "選択肢の表示",
+        "description": "選択肢を表示し、プレイヤーの選択に応じて分岐",
+        "parameters": [
+            {
+                "index": 0,
+                "name": "Choices",
+                "type": "array<string>",
+                "desc": "選択肢のテキスト配列(最大6個)"
+            },
+            {
+                "index": 1,
+                "name": "CancelType",
+                "type": "number",
+                "desc": "-1:禁止, 0-5:選択肢インデックス"
+            }
+        ],
+        "next": "code 402(When), 403(Cancel), 404(End)で分岐構造を構築"
+    },
+    "402": {
+        "name": "When",
+        "description": "選択肢の各ケース",
+        "parameters": [
+            {
+                "index": 0,
+                "name": "ResultIndex",
+                "type": "number",
+                "desc": "選択肢のインデックス"
+            },
+            {
+                "index": 1,
+                "name": "ChoiceText",
+                "type": "string",
+                "desc": "選択肢のテキスト"
+            }
+        ],
+        "indent": "+1 して内容を記述"
+    },
+    "403": {
+        "name": "When Cancel",
+        "description": "キャンセル時のケース",
+        "parameters": [
+            {
+                "index": 0,
+                "name": "CancelBehavior",
+                "type": "number",
+                "desc": "通常は4"
+            }
+        ]
+    },
+    "404": {
+        "name": "End",
+        "description": "分岐の終了",
+        "parameters": []
+    },
+    "121": {
+        "name": "スイッチの操作",
+        "description": "ゲームスイッチのON/OFFを切り替え",
+        "parameters": [
+            {
+                "index": 0,
+                "name": "StartSwitchId",
+                "type": "number",
+                "desc": "開始スイッチID"
+            },
+            {
+                "index": 1,
+                "name": "EndSwitchId",
+                "type": "number",
+                "desc": "終了スイッチID(単一の場合は開始と同じ)"
+            },
+            {
+                "index": 2,
+                "name": "Value",
+                "type": "number",
+                "desc": "0:ON, 1:OFF"
+            }
+        ]
+    },
+    "122": {
+        "name": "変数の操作",
+        "description": "ゲーム変数に値を代入または演算",
+        "parameters": [
+            {
+                "index": 0,
+                "name": "StartVariableId",
+                "type": "number"
+            },
+            {
+                "index": 1,
+                "name": "EndVariableId",
+                "type": "number"
+            },
+            {
+                "index": 2,
+                "name": "OperationType",
+                "type": "number",
+                "desc": "0:代入, 1:加算, 2:減算, 3:乗算, 4:除算, 5:剰余"
+            },
+            {
+                "index": 3,
+                "name": "OperandType",
+                "type": "number",
+                "desc": "0:定数, 1:変数"
+            },
+            {
+                "index": 4,
+                "name": "Operand",
+                "type": "number",
+                "desc": "値または変数ID"
+            }
+        ]
+    },
+    "231": {
+        "name": "ピクチャの表示",
+        "description": "画面にピクチャを表示",
+        "parameters": [
+            {
+                "index": 0,
+                "name": "PictureId",
+                "type": "number",
+                "desc": "ピクチャ番号(1-100)"
+            },
+            {
+                "index": 1,
+                "name": "ImageName",
+                "type": "string",
+                "desc": "画像ファイル名(拡張子なし)"
+            },
+            {
+                "index": 2,
+                "name": "Origin",
+                "type": "number",
+                "desc": "0:左上, 1:中心"
+            },
+            {
+                "index": 3,
+                "name": "ApointmentType",
+                "type": "number",
+                "desc": "0:直接指定, 1:変数指定"
+            },
+            {
+                "index": 4,
+                "name": "X",
+                "type": "number",
+                "desc": "X座標"
+            },
+            {
+                "index": 5,
+                "name": "Y",
+                "type": "number",
+                "desc": "Y座標"
+            },
+            {
+                "index": 6,
+                "name": "ScaleX",
+                "type": "number",
+                "desc": "幅の拡大率(%)"
+            },
+            {
+                "index": 7,
+                "name": "ScaleY",
+                "type": "number",
+                "desc": "高さの拡大率(%)"
+            },
+            {
+                "index": 8,
+                "name": "Opacity",
+                "type": "number",
+                "desc": "不透明度(0-255)"
+            },
+            {
+                "index": 9,
+                "name": "BlendMode",
+                "type": "number",
+                "desc": "0:通常, 1:加算, 2:乗算, 3:スクリーン"
+            }
+        ]
+    },
+    "0": {
+        "name": "Empty",
+        "description": "イベントリストの終端またはプレースホルダー",
+        "parameters": [],
+        "note": "すべてのイベントリストはcode: 0で終わる必要があります"
+    },
+    "112": {
+        "name": "ループ",
+        "description": "ブロック内の処理を無限に繰り返す",
+        "parameters": [],
+        "next": "code 413(Repeat Above)で閉じる"
+    },
+    "413": {
+        "name": "以上繰り返し",
+        "description": "ループの終端",
+        "parameters": [],
+        "indent": "-1"
+    },
+    "113": {
+        "name": "ループの中断",
+        "description": "最も内側のループを脱出する",
+        "parameters": []
+    },
+    "111": {
+        "name": "条件分岐",
+        "description": "条件を満たす場合とそうでない場合で処理を分ける",
+        "parameters": [
+            {
+                "index": 0,
+                "name": "Code",
+                "type": "number",
+                "desc": "条件コード (0:スイッチ, 1:変数, etc.)"
+            },
+            {
+                "index": 1,
+                "name": "DataA",
+                "type": "number",
+                "desc": "データA (スイッチID, 変数ID等)"
+            },
+            {
+                "index": 2,
+                "name": "Operation",
+                "type": "number",
+                "desc": "比較演算子 (0:等しい, 1:以上, etc.)"
+            },
+            {
+                "index": 3,
+                "name": "DataB",
+                "type": "number",
+                "desc": "データB (定数, 変数ID等)"
+            },
+            {
+                "index": 4,
+                "name": "Class",
+                "type": "number",
+                "desc": "拡張データ"
+            }
+        ],
+        "next": "code 411(Else), 412(Branch End)で分岐構造を構築"
+    },
+    "411": {
+        "name": "それ以外のとき",
+        "description": "条件を満たさない場合の処理",
+        "parameters": [],
+        "indent": "分岐のインデント調整"
+    },
+    "412": {
+        "name": "分岐終了",
+        "description": "条件分岐の終了",
+        "parameters": [],
+        "indent": "-1"
+    }
+}

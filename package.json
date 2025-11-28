@@ -1,0 +1,21 @@
+{
+  "name": "rpg-maker-mz-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for RPG Maker MZ",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.22.0",
+    "jimp": "^1.6.0",
+    "puppeteer": "^24.31.0",
+    "robotjs": "^0.6.0",
+    "screenshot-desktop": "^1.15.3",
+    "zod": "^4.1.12"
+  }
+}
