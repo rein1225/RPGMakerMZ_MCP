@@ -142,6 +142,23 @@ export const toolSchemas = [
         }
     },
     {
+        name: "add_choice",
+        description: "Add a choice selection to an event",
+        inputSchema: {
+            type: "object",
+            properties: {
+                projectPath: { type: "string" },
+                mapId: { type: "number" },
+                eventId: { type: "number" },
+                pageIndex: { type: "number" },
+                insertPosition: { type: "number" },
+                options: { type: "array", items: { type: "string" }, description: "Choice options" },
+                cancelType: { type: "number", default: -1, description: "Cancel behavior: -1=disallow, 0-n=branch to option" }
+            },
+            required: ["projectPath", "mapId", "eventId", "pageIndex", "insertPosition", "options"]
+        }
+    },
+    {
         name: "add_loop",
         description: "Add a loop structure to an event",
         inputSchema: {

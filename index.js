@@ -67,6 +67,7 @@ const toolMap = {
   // Event tools
   "get_event_page": eventsHandlers.getEventPage,
   "add_dialogue": eventsHandlers.addDialogue,
+  "add_choice": eventsHandlers.addChoice,
   "add_loop": eventsHandlers.addLoop,
   "add_break_loop": eventsHandlers.addBreakLoop,
   "add_conditional_branch": eventsHandlers.addConditionalBranch,

@@ -28,6 +28,33 @@ export async function addDialogue(args) {
     return { content: [{ type: "text", text: "Added dialogue." }] };
 }
 
+export async function addChoice(args) {
+    const { projectPath, mapId, eventId, pageIndex, insertPosition, options, cancelType = -1 } = args;
+    await validateProjectPath(projectPath);
+
+    const mapData = await loadMapData(projectPath, mapId);
+    const list = getEventPageList(mapData, eventId, pageIndex);
+    const pos = insertPosition === -1 ? list.length - 1 : insertPosition;
+
+    const cmds = [];
+    // 102: Show Choices
+    cmds.push({ code: 102, indent: 0, parameters: [options, cancelType] });
+
+    // 402: When [choice]
+    options.forEach((opt, i) => {
+        cmds.push({ code: 402, indent: 0, parameters: [i, opt] });
+        cmds.push({ code: 0, indent: 1, parameters: [] }); // Empty command for content
+    });
+
+    // 404: End
+    cmds.push({ code: 404, indent: 0, parameters: [] });
+
+    list.splice(pos, 0, ...cmds);
+    await saveMapData(projectPath, mapId, mapData);
+
+    return { content: [{ type: "text", text: `Added choice with ${options.length} options.` }] };
+}
+
 export async function addLoop(args) {
     const { projectPath, mapId, eventId, pageIndex, insertPosition } = args;
     await validateProjectPath(projectPath);
