@@ -21,7 +21,7 @@ export async function addDialogue(args) {
     const pos = insertPosition === -1 ? list.length - 1 : insertPosition;
     const cmds = [];
     cmds.push({ code: 101, indent: 0, parameters: [face, faceIndex, background, position] });
-    const lines = text.split('\\n');
+    const lines = text.split('\n');
     lines.forEach(line => { cmds.push({ code: 401, indent: 0, parameters: [line] }); });
     list.splice(pos, 0, ...cmds);
     await saveMapData(projectPath, mapId, mapData);

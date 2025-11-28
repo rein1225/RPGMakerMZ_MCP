@@ -38,7 +38,7 @@ export async function runPlaytest(args) {
             const serveHandlerModule = await import('serve-handler');
             const serveHandler = serveHandlerModule.default || serveHandlerModule;
 
-            server = http.default.createServer((request, response) => {
+            server = http.createServer((request, response) => {
                 return serveHandler(request, response, {
                     public: projectPath,
                     headers: [
@@ -65,7 +65,8 @@ export async function runPlaytest(args) {
             await page.goto(`http://localhost:${port}/index.html`);
 
             // Screenshot logic
-            await captureGameScreenshot(page, result, startNewGame, duration, startTime, debugLogPath);
+            const screenshotContent = await captureGameScreenshot(page, startNewGame, duration, startTime, debugLogPath);
+            result.content.push(...screenshotContent);
             capturedViaPuppeteer = true;
 
         } else {
@@ -99,7 +100,8 @@ export async function runPlaytest(args) {
                 const page = pages[0];
 
                 if (page) {
-                    await captureGameScreenshot(page, result, startNewGame, duration, startTime, debugLogPath);
+                    const screenshotContent = await captureGameScreenshot(page, startNewGame, duration, startTime, debugLogPath);
+                    result.content.push(...screenshotContent);
                     capturedViaPuppeteer = true;
                 }
             }
@@ -125,7 +127,8 @@ export async function runPlaytest(args) {
     } finally {
         // Cleanup: Different strategies for fallback vs Game.exe mode
         if (useBrowserFallback) {
-            if (browser && autoClose) await browser.close();
+            // Always close browser in fallback mode
+            if (browser) await browser.close();
             if (server) server.close();
         } else {
             if (browser) await browser.disconnect();
@@ -148,7 +151,8 @@ export async function runPlaytest(args) {
     return result;
 }
 
-async function captureGameScreenshot(page, result, startNewGame, duration, startTime, debugLogPath) {
+async function captureGameScreenshot(page, startNewGame, duration, startTime, debugLogPath) {
+    const content = [];
     try {
         await page.waitForSelector('#gameCanvas', { timeout: duration });
         await fs.appendFile(debugLogPath, "Found #gameCanvas.\\n");
@@ -189,19 +193,20 @@ async function captureGameScreenshot(page, result, startNewGame, duration, start
                 return canvas.toDataURL('image/png');
             });
             const base64Data = canvasDataUrl.replace(/^data:image\/png;base64,/, "");
-            result.content.push({ type: "image/png", data: base64Data });
-            result.content.push({ type: "text", text: `Game launched and screenshot taken via Canvas.toDataURL. (New Game: ${startNewGame})` });
+            content.push({ type: "image/png", data: base64Data });
+            content.push({ type: "text", text: `Game launched and screenshot taken via Canvas.toDataURL. (New Game: ${startNewGame})` });
             await fs.appendFile(debugLogPath, "Screenshot taken via Canvas.toDataURL.\\n");
         } catch (e) {
             await fs.appendFile(debugLogPath, `Canvas toDataURL failed: ${e.message}\\n`);
             const base64Img = await page.screenshot({ encoding: 'base64' });
-            result.content.push({ type: "image/png", data: base64Img });
-            result.content.push({ type: "text", text: `Game launched and screenshot taken via Puppeteer page.screenshot. (New Game: ${startNewGame})` });
+            content.push({ type: "image/png", data: base64Img });
+            content.push({ type: "text", text: `Game launched and screenshot taken via Puppeteer page.screenshot. (New Game: ${startNewGame})` });
             await fs.appendFile(debugLogPath, "Screenshot taken via page.screenshot.\\n");
         }
     } catch (e) {
         await fs.appendFile(debugLogPath, `Puppeteer operation failed: ${e.message}\\n`);
     }
+    return content;
 }
 
 export async function inspectGameState(args) {
