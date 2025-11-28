@@ -89,23 +89,28 @@ Antigravityの設定ファイル（`mcp_config.json`）に以下を追加：
 - `projectPath` (必須): プロジェクトフォルダの絶対パス
 - `assetType` (省略可): 'img', 'audio', 'all' (デフォルト: 'all')
 
+#### 8. `check_assets_integrity` - アセット整合性チェック
+**説明:** イベント内で参照されているアセット（画像、音声など）が実際にプロジェクト内に存在するかチェックします。
+**パラメータ:**
+- `projectPath` (必須): プロジェクトフォルダの絶対パス
+
 ---
 
 ### Phase 3: プラグイン管理
 
-#### 8. `write_plugin_code` - プラグイン作成
+#### 9. `write_plugin_code` - プラグイン作成
 **説明:** js/pluginsディレクトリに新しいプラグインファイル(.js)を作成します。
 **パラメータ:**
 - `projectPath` (必須): プロジェクトフォルダの絶対パス
 - `filename` (必須): プラグインファイル名（例: 'MyPlugin.js'）
 - `code` (必須): JavaScriptコード
 
-#### 9. `get_plugins_config` - プラグイン設定取得
+#### 10. `get_plugins_config` - プラグイン設定取得
 **説明:** js/plugins.jsから現在のプラグイン設定を読み込みます。
 **パラメータ:**
 - `projectPath` (必須): プロジェクトフォルダの絶対パス
 
-#### 10. `update_plugins_config` - プラグイン設定更新
+#### 11. `update_plugins_config` - プラグイン設定更新
 **説明:** js/plugins.jsのプラグイン設定を更新します。
 **パラメータ:**
 - `projectPath` (必須): プロジェクトフォルダの絶対パス
@@ -126,57 +131,93 @@ Antigravityの設定ファイル（`mcp_config.json`）に以下を追加：
 - `text` (必須): 表示テキスト
 - `face`, `faceIndex`, `background`, `position` (省略可)
 
-#### 12. `add_loop` - ループ追加
+#### 12. `add_choice` - 選択肢の表示
+**説明:** イベントに選択肢を追加します。最大6つの選択肢を設定できます。
+**パラメータ:**
+- `projectPath` (必須): プロジェクトフォルダの絶対パス
+- `mapId` (必須): マップID
+- `eventId` (必須): イベントID
+- `pageIndex` (必須): ページ番号
+- `insertPosition` (必須): 挿入位置（-1で末尾）
+- `options` (必須): 選択肢の文字列配列（最大6個）
+- `cancelType` (省略可): キャンセル時の動作（-1=キャンセル不可、0-5=選択肢に分岐、デフォルト: -1）
+
+#### 13. `add_loop` - ループ追加
 **説明:** イベントコマンドのループ構造（Loop + Repeat Above）を追加します。
 **パラメータ:**
 - `projectPath`, `mapId`, `eventId`, `pageIndex`, `insertPosition` (必須)
 
-#### 13. `add_break_loop` - ループ中断
+#### 14. `add_break_loop` - ループ中断
 **説明:** ループを中断するコマンドを追加します。
 **パラメータ:**
 - `projectPath`, `mapId`, `eventId`, `pageIndex`, `insertPosition` (必須)
 
-#### 14. `add_conditional_branch` - 条件分岐追加
+#### 15. `add_conditional_branch` - 条件分岐追加
 **説明:** 条件分岐（If-Else-End）を追加します。
 **パラメータ:**
 - `projectPath`, `mapId`, `eventId`, `pageIndex`, `insertPosition` (必須)
 - `condition` (必須): 条件パラメータオブジェクト
 - `includeElse` (省略可): Else分岐を含めるか（デフォルト: true）
 
-#### 15. `delete_event_command` - イベントコマンド削除
+#### 16. `delete_event_command` - イベントコマンド削除
 **説明:** 指定したインデックスのイベントコマンドを削除します。
 **パラメータ:**
 - `projectPath`, `mapId`, `eventId`, `pageIndex`, `commandIndex` (必須)
 
-#### 16. `update_event_command` - イベントコマンド更新
+#### 17. `update_event_command` - イベントコマンド更新
 **説明:** 指定したインデックスのイベントコマンドを新しい内容で上書きします。
 **パラメータ:**
 - `projectPath`, `mapId`, `eventId`, `pageIndex`, `commandIndex`, `newCommand` (必須)
 
-#### 17. `add_actor` - アクター追加
+#### 18. `add_actor` - アクター追加
 **説明:** データベースに新しいアクターを追加します。
 **パラメータ:**
 - `projectPath`, `name` (必須)
 - `classId`, `initialLevel`, `maxLevel` (省略可)
 
-#### 18. `add_item` - アイテム追加
+#### 19. `add_item` - アイテム追加
 **説明:** データベースに新しいアイテムを追加します。
 **パラメータ:**
 - `projectPath`, `name` (必須)
 - `price`, `consumable`, `scope`, `occasion` (省略可)
 
-#### 19. `add_skill` - スキル追加
+#### 20. `add_skill` - スキル追加
 **説明:** データベースに新しいスキルを追加します。
 **パラメータ:**
 - `projectPath`, `name` (必須)
 - `mpCost`, `tpCost`, `scope`, `occasion` (省略可)
 
-#### 20. `draw_map_tile` - マップタイル描画
+#### 21. `draw_map_tile` - マップタイル描画
 **説明:** マップの指定座標にタイルを配置します。
 **パラメータ:**
 - `projectPath`, `mapId`, `x`, `y`, `layer`, `tileId` (必須)
 
-#### 21. `inspect_game_state` - ゲーム状態検査
+#### 22. `create_map` - 新規マップ作成
+**説明:** 新しいマップを作成します。
+**パラメータ:**
+- `projectPath` (必須): プロジェクトフォルダの絶対パス
+- `mapName` (必須): マップ名
+- `width` (省略可): マップ幅（タイル数、デフォルト: 17）
+- `height` (省略可): マップ高さ（タイル数、デフォルト: 13）
+- `parentMapId` (省略可): 親マップID（デフォルト: 0）
+
+#### 23. `show_picture` - ピクチャの表示
+**説明:** イベントにピクチャ表示コマンドを追加します。
+**パラメータ:**
+- `projectPath` (必須): プロジェクトフォルダの絶対パス
+- `mapId` (必須): マップID
+- `eventId` (必須): イベントID
+- `pageIndex` (必須): ページ番号
+- `insertPosition` (必須): 挿入位置（-1で末尾）
+- `pictureId` (必須): ピクチャ番号
+- `imageName` (必須): 画像ファイル名
+- `x`, `y` (必須): 表示座標
+- `origin` (省略可): 原点位置（0=左上、1=中央、デフォルト: 0）
+- `scaleX`, `scaleY` (省略可): 拡大率（%、デフォルト: 100）
+- `opacity` (省略可): 不透明度（0-255、デフォルト: 255）
+- `blendMode` (省略可): 合成モード（0-3、デフォルト: 0）
+
+#### 24. `inspect_game_state` - ゲーム状態検査
 **説明:** 実行中のゲーム（Puppeteer接続）から変数やスイッチの値を取得します。
 **パラメータ:**
 - `script` (必須): 評価するJavaScriptコード（例: `$gameVariables.value(1)`）
@@ -186,7 +227,7 @@ Antigravityの設定ファイル（`mcp_config.json`）に以下を追加：
 
 ### Phase 5: テスト・自動化
 
-#### 22. `run_playtest` - テストプレイ実行
+#### 25. `run_playtest` - テストプレイ実行
 **説明:** Game.exeを起動し、指定時間後にスクリーンショットを撮影します。Game.exeが見つからない場合は、自動的にブラウザベースのテストプレイ（フォールバックモード）が実行されます。Puppeteer接続用のデバッグポートも指定可能です。
 **パラメータ:**
 - `projectPath` (必須): プロジェクトフォルダの絶対パス
@@ -246,7 +287,7 @@ search_events({ projectPath: "c:/path/to/project", query: "ポーション" });
 [AI] ← → [MCP Server] ← → [RPG Maker MZ Project]
 [AI] ← → [MCP Server] ← → [RPG Maker MZ Project]
 [AI] ← → [MCP Server] ← → [RPG Maker MZ Project]
-           ├─ Tools (22個)
+           ├─ Tools (26個)
            ├─ Resources (1個)
            └─ Schemas (Zod Validation)
 ```
@@ -269,6 +310,13 @@ RPGツクールMZ＿MCP/
 MIT License
 
 ## 更新履歴
+### v1.3.0 (2025-11-29)
+- 新ツール追加: `add_choice`, `create_map`, `show_picture`, `check_assets_integrity`
+- ユニットテスト導入 (Vitest)
+- ロガーユーティリティ追加
+- 定数の外部化
+- TypeScript型定義追加
+
 ### v1.2.0 (2025-11-28)
 - `run_playtest` にブラウザベースのフォールバック機能を追加（Game.exe不要）
 

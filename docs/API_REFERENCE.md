@@ -75,6 +75,16 @@ Get the command list for a specific event page.
 - **eventId**: Event ID.
 - **pageIndex**: Page index (0-based).
 
+### `add_choice`
+Add a choice selection to an event.
+- **projectPath**: Absolute path to the project folder.
+- **mapId**: Map ID.
+- **eventId**: Event ID.
+- **pageIndex**: Page index.
+- **insertPosition**: Index to insert at (-1 for end).
+- **options**: Array of choice strings (max 6).
+- **cancelType**: Cancel behavior (-1=disallow, 0-5=branch to option).
+
 ### `add_loop`
 Add a Loop block (Loop + Repeat Above).
 - **projectPath**: Absolute path to the project folder.
