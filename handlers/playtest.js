@@ -5,11 +5,20 @@ import path from "path";
 import screenshot from "screenshot-desktop";
 import { fileURLToPath } from "url";
 import { validateProjectPath, sleep } from "../utils/validation.js";
+import { Logger } from "../utils/logger.js";
+import { DEFAULTS } from "../utils/constants.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export async function runPlaytest(args) {
-    const { projectPath, duration = 5000, autoClose = false, debugPort = 9222, startNewGame = false } = args;
+    const {
+        projectPath,
+        duration = DEFAULTS.TIMEOUT,
+        autoClose = DEFAULTS.AUTO_CLOSE,
+        debugPort = DEFAULTS.PORT,
+        startNewGame = DEFAULTS.START_NEW_GAME
+    } = args;
+
     await validateProjectPath(projectPath);
 
     const gameExePath = path.join(projectPath, "Game.exe");
@@ -18,18 +27,17 @@ export async function runPlaytest(args) {
     try {
         await fs.access(gameExePath);
     } catch {
-        console.error("Game.exe not found. Falling back to browser-based playtest.");
+        await Logger.info("Game.exe not found. Falling back to browser-based playtest.");
         useBrowserFallback = true;
     }
 
-    const debugLogPath = path.join(__dirname, "..", "debug_log.txt");
     let gameProcess;
     let server;
     let browser;
     let result = { content: [] };
     let capturedViaPuppeteer = false;
     const startTime = Date.now();
-    const maxWaitTime = Math.max(duration + 10000, 20000);
+    const maxWaitTime = Math.max(duration + 10000, DEFAULTS.MAX_WAIT_TIME);
 
     try {
         if (useBrowserFallback) {
@@ -49,8 +57,8 @@ export async function runPlaytest(args) {
 
             await new Promise((resolve) => server.listen(0, () => resolve()));
             const port = server.address().port;
-            console.error(`Local server running on port ${port}`);
-            await fs.appendFile(debugLogPath, `Local server running on port ${port}\\n`);
+            await Logger.info(`Local server running on port ${port}`);
+            await Logger.debug(`Local server running on port ${port}`);
 
             // Launch browser
             browser = await puppeteer.launch({
@@ -65,14 +73,14 @@ export async function runPlaytest(args) {
             await page.goto(`http://localhost:${port}/index.html`);
 
             // Screenshot logic
-            const screenshotContent = await captureGameScreenshot(page, startNewGame, duration, startTime, debugLogPath);
+            const screenshotContent = await captureGameScreenshot(page, startNewGame, duration, startTime);
             result.content.push(...screenshotContent);
             capturedViaPuppeteer = true;
 
         } else {
             // Game.exe mode
-            await fs.appendFile(debugLogPath, `Launching game: ${gameExePath} with remote debugging on port ${debugPort}\\n`);
-            console.error(`Launching game: ${gameExePath} with remote debugging on port ${debugPort}`);
+            await Logger.debug(`Launching game: ${gameExePath} with remote debugging on port ${debugPort}`);
+            await Logger.info(`Launching game: ${gameExePath} with remote debugging on port ${debugPort}`);
 
             const spawnArgs = [`--remote-debugging-port=${debugPort}`];
             gameProcess = spawn(gameExePath, spawnArgs, { detached: true, stdio: 'ignore' });
@@ -84,7 +92,7 @@ export async function runPlaytest(args) {
                 try {
                     browser = await puppeteer.connect({ browserURL: `http://127.0.0.1:${debugPort}`, defaultViewport: null });
                     connected = true;
-                    await fs.appendFile(debugLogPath, "Puppeteer connected successfully.\\n");
+                    await Logger.debug("Puppeteer connected successfully.");
                     break;
                 } catch (e) {
                     await sleep(1000);
@@ -92,7 +100,7 @@ export async function runPlaytest(args) {
             }
 
             if (!connected) {
-                await fs.appendFile(debugLogPath, "Puppeteer failed to connect.\\n");
+                await Logger.debug("Puppeteer failed to connect.");
             }
 
             if (browser) {
@@ -100,7 +108,7 @@ export async function runPlaytest(args) {
                 const page = pages[0];
 
                 if (page) {
-                    const screenshotContent = await captureGameScreenshot(page, startNewGame, duration, startTime, debugLogPath);
+                    const screenshotContent = await captureGameScreenshot(page, startNewGame, duration, startTime);
                     result.content.push(...screenshotContent);
                     capturedViaPuppeteer = true;
                 }
@@ -108,7 +116,7 @@ export async function runPlaytest(args) {
 
             // Desktop screenshot fallback (only for Game.exe mode)
             if (!capturedViaPuppeteer) {
-                console.error("Falling back to desktop screenshot");
+                await Logger.error("Falling back to desktop screenshot", new Error("Puppeteer capture failed"));
                 const elapsed = Date.now() - startTime;
                 if (elapsed < duration) await sleep(duration - elapsed);
                 try {
@@ -123,7 +131,7 @@ export async function runPlaytest(args) {
             }
         }
     } catch (e) {
-        await fs.appendFile(debugLogPath, `Puppeteer connection logic error: ${e.message}\\n`);
+        await Logger.error("Puppeteer connection logic error", e);
     } finally {
         // Cleanup: Different strategies for fallback vs Game.exe mode
         if (useBrowserFallback) {
@@ -151,23 +159,23 @@ export async function runPlaytest(args) {
     return result;
 }
 
-async function captureGameScreenshot(page, startNewGame, duration, startTime, debugLogPath) {
+async function captureGameScreenshot(page, startNewGame, duration, startTime) {
     const content = [];
     try {
         await page.waitForSelector('#gameCanvas', { timeout: duration });
-        await fs.appendFile(debugLogPath, "Found #gameCanvas.\\n");
+        await Logger.debug("Found #gameCanvas.");
 
         if (startNewGame) {
-            await fs.appendFile(debugLogPath, "Attempting to start new game...\\n");
+            await Logger.debug("Attempting to start new game...");
             try {
                 await page.waitForFunction(() => {
                     return window.SceneManager && window.SceneManager._scene && window.SceneManager._scene.constructor.name === 'Scene_Title';
                 }, { timeout: 10000 });
-                await fs.appendFile(debugLogPath, "Scene_Title detected.\\n");
+                await Logger.debug("Scene_Title detected.");
                 await page.evaluate(() => { DataManager.setupNewGame(); SceneManager.goto(Scene_Map); });
-                await fs.appendFile(debugLogPath, "New Game command sent.\\n");
+                await Logger.debug("New Game command sent.");
             } catch (e) {
-                await fs.appendFile(debugLogPath, `Failed to start new game: ${e.message}\\n`);
+                await Logger.debug(`Failed to start new game: ${e.message}`);
             }
         }
 
@@ -180,9 +188,9 @@ async function captureGameScreenshot(page, startNewGame, duration, startTime, de
                 if (targetScene && sceneName !== targetScene) return false;
                 return true;
             }, { timeout: remainingTime }, startNewGame ? 'Scene_Map' : null);
-            await fs.appendFile(debugLogPath, "Scene ready check passed.\\n");
+            await Logger.debug("Scene ready check passed.");
         } catch (e) {
-            await fs.appendFile(debugLogPath, "Scene ready check timed out.\\n");
+            await Logger.debug("Scene ready check timed out.");
         }
 
         await sleep(1000);
@@ -195,22 +203,22 @@ async function captureGameScreenshot(page, startNewGame, duration, startTime, de
             const base64Data = canvasDataUrl.replace(/^data:image\/png;base64,/, "");
             content.push({ type: "image/png", data: base64Data });
             content.push({ type: "text", text: `Game launched and screenshot taken via Canvas.toDataURL. (New Game: ${startNewGame})` });
-            await fs.appendFile(debugLogPath, "Screenshot taken via Canvas.toDataURL.\\n");
+            await Logger.debug("Screenshot taken via Canvas.toDataURL.");
         } catch (e) {
-            await fs.appendFile(debugLogPath, `Canvas toDataURL failed: ${e.message}\\n`);
+            await Logger.debug(`Canvas toDataURL failed: ${e.message}`);
             const base64Img = await page.screenshot({ encoding: 'base64' });
             content.push({ type: "image/png", data: base64Img });
             content.push({ type: "text", text: `Game launched and screenshot taken via Puppeteer page.screenshot. (New Game: ${startNewGame})` });
-            await fs.appendFile(debugLogPath, "Screenshot taken via page.screenshot.\\n");
+            await Logger.debug("Screenshot taken via page.screenshot.");
         }
     } catch (e) {
-        await fs.appendFile(debugLogPath, `Puppeteer operation failed: ${e.message}\\n`);
+        await Logger.error("Puppeteer operation failed", e);
     }
     return content;
 }
 
 export async function inspectGameState(args) {
-    const { port = 9222, script } = args;
+    const { port = DEFAULTS.PORT, script } = args;
 
     try {
         const browser = await puppeteer.connect({

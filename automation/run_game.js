@@ -1,8 +1,13 @@
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
 const robot = require("robotjs");
-const screenshot = require("screenshot-desktop");
-const { spawn } = require("child_process");
-const path = require("path");
-const fs = require("fs");
+import screenshot from "screenshot-desktop";
+import { spawn } from "child_process";
+import path from "path";
+import fs from "fs";
+import { fileURLToPath } from "url";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Configuration
 const projectPath = path.join(__dirname, "../test_project");

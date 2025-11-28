@@ -1,4 +1,4 @@
-const puppeteer = require('puppeteer');
+import puppeteer from 'puppeteer';
 
 class MZDriver {
     constructor(browser, page) {
@@ -102,4 +102,4 @@ class MZDriver {
     }
 }
 
-module.exports = MZDriver;
+export default MZDriver;
