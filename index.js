@@ -82,13 +82,19 @@ const toolMap = {
 
   // Map tools
   "draw_map_tile": mapHandlers.drawMapTile,
+  "create_map": mapHandlers.createMap,
+
+  // Project tools (extended)
+  "check_assets_integrity": projectHandlers.checkAssetsIntegrity,
+
+  // Event tools (extended)
+  "show_picture": eventsHandlers.showPicture,
 
   // Playtest tools
   "run_playtest": playtestHandlers.runPlaytest,
   "inspect_game_state": playtestHandlers.inspectGameState,
 };
 
-// Resources handler
 server.setRequestHandler(ListResourcesRequestSchema, async () => {
   return {
     resources: [

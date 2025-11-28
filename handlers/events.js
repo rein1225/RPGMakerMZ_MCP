@@ -55,6 +55,28 @@ export async function addChoice(args) {
     return { content: [{ type: "text", text: `Added choice with ${options.length} options.` }] };
 }
 
+export async function showPicture(args) {
+    const { projectPath, mapId, eventId, pageIndex, insertPosition, pictureId = 1, pictureName, origin = 0, x = 0, y = 0 } = args;
+    await validateProjectPath(projectPath);
+
+    const mapData = await loadMapData(projectPath, mapId);
+    const list = getEventPageList(mapData, eventId, pageIndex);
+    const pos = insertPosition === -1 ? list.length - 1 : insertPosition;
+
+    // 231: Show Picture
+    // parameters: [pictureId, pictureName, origin, x, y, scaleX, scaleY, opacity, blendMode]
+    const cmd = {
+        code: 231,
+        indent: 0,
+        parameters: [pictureId, pictureName, origin, x, y, 100, 100, 255, 0]
+    };
+
+    list.splice(pos, 0, cmd);
+    await saveMapData(projectPath, mapId, mapData);
+
+    return { content: [{ type: "text", text: `Added show picture command for "${pictureName}" (ID: ${pictureId}).` }] };
+}
+
 export async function addLoop(args) {
     const { projectPath, mapId, eventId, pageIndex, insertPosition } = args;
     await validateProjectPath(projectPath);

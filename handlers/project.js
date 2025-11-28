@@ -122,3 +122,76 @@ export async function listAssets(args) {
         ],
     };
 }
+
+export async function checkAssetsIntegrity(args) {
+    const { projectPath } = args;
+    await validateProjectPath(projectPath);
+
+    const issues = [];
+    const dataDir = path.join(projectPath, "data");
+
+    // Check for referenced images in database
+    const checkImageReferences = async (dataFile, propertyName) => {
+        try {
+            const filePath = path.join(dataDir, dataFile);
+            const data = JSON.parse(await fs.readFile(filePath, "utf-8"));
+
+            for (const item of data) {
+                if (!item) continue;
+                const imageName = item[propertyName];
+                if (imageName && imageName !== "") {
+                    // Check if image exists (simplified - just check characters folder)
+                    const imgPath = path.join(projectPath, "img", "characters", `${imageName}.png`);
+                    try {
+                        await fs.access(imgPath);
+                    } catch {
+                        issues.push({
+                            type: "missing_image",
+                            file: dataFile,
+                            itemId: item.id,
+                            itemName: item.name || "Unknown",
+                            imageName: imageName,
+                            expectedPath: `img/characters/${imageName}.png`
+                        });
+                    }
+                }
+            }
+        } catch (e) {
+            // File doesn't exist or can't be read
+        }
+    };
+
+    // Check actors for character images
+    await checkImageReferences("Actors.json", "characterName");
+
+    // Check for orphaned map files
+    try {
+        const mapInfosPath = path.join(dataDir, "MapInfos.json");
+        const mapInfos = JSON.parse(await fs.readFile(mapInfosPath, "utf-8"));
+        const mapFiles = await fs.readdir(dataDir);
+
+        for (const file of mapFiles) {
+            if (file.match(/^Map(\d{3})\.json$/)) {
+                const mapId = parseInt(file.match(/^Map(\d{3})\.json$/)[1]);
+                if (!mapInfos[mapId]) {
+                    issues.push({
+                        type: "orphaned_map",
+                        file: file,
+                        mapId: mapId
+                    });
+                }
+            }
+        }
+    } catch (e) {
+        // Ignore errors
+    }
+
+    return {
+        content: [{
+            type: "text",
+            text: issues.length === 0
+                ? "No asset integrity issues found."
+                : `Found ${issues.length} issue(s):\n${JSON.stringify(issues, null, 2)}`
+        }]
+    };
+}

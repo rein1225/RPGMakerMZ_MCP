@@ -312,6 +312,52 @@ export const toolSchemas = [
         }
     },
     {
+        name: "create_map",
+        description: "Create a new map in the project",
+        inputSchema: {
+            type: "object",
+            properties: {
+                projectPath: { type: "string" },
+                mapName: { type: "string" },
+                width: { type: "number", default: 17 },
+                height: { type: "number", default: 13 },
+                tilesetId: { type: "number", default: 1 }
+            },
+            required: ["projectPath", "mapName"]
+        }
+    },
+    {
+        name: "show_picture",
+        description: "Show a picture in an event",
+        inputSchema: {
+            type: "object",
+            properties: {
+                projectPath: { type: "string" },
+                mapId: { type: "number" },
+                eventId: { type: "number" },
+                pageIndex: { type: "number" },
+                insertPosition: { type: "number" },
+                pictureId: { type: "number", default: 1 },
+                pictureName: { type: "string" },
+                origin: { type: "number", default: 0, description: "0: Upper Left, 1: Center" },
+                x: { type: "number", default: 0 },
+                y: { type: "number", default: 0 }
+            },
+            required: ["projectPath", "mapId", "eventId", "pageIndex", "insertPosition", "pictureName"]
+        }
+    },
+    {
+        name: "check_assets_integrity",
+        description: "Check for missing assets and orphaned files",
+        inputSchema: {
+            type: "object",
+            properties: {
+                projectPath: { type: "string" }
+            },
+            required: ["projectPath"]
+        }
+    },
+    {
         name: "run_playtest",
         description: "Run a playtest of the game. Launches Game.exe if available, otherwise uses browser-based fallback.",
         inputSchema: {
