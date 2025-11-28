@@ -212,7 +212,7 @@ Antigravityの設定ファイル（`mcp_config.json`）に以下を追加：
 - `pageIndex` (必須): ページ番号
 - `insertPosition` (必須): 挿入位置（-1で末尾）
 - `pictureId` (必須): ピクチャ番号
-- `imageName` (必須): 画像ファイル名
+- `pictureName` (必須): 画像ファイル名
 - `x`, `y` (必須): 表示座標
 - `origin` (省略可): 原点位置（0=左上、1=中央、デフォルト: 0）
 - `scaleX`, `scaleY` (省略可): 拡大率（%、デフォルト: 100）

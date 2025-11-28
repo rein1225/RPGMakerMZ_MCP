@@ -123,7 +123,7 @@ Add a Show Picture command.
 - **pageIndex**: Page index.
 - **insertPosition**: Index to insert at.
 - **pictureId**: Picture number.
-- **imageName**: Image filename.
+- **pictureName**: Image filename.
 - **x**: X coordinate.
 - **y**: Y coordinate.
 - **origin**: 0=Upper Left, 1=Center.
