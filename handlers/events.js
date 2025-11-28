@@ -1,6 +1,7 @@
 import { validateProjectPath } from "../utils/validation.js";
 import { loadMapData, saveMapData, getEventPageList } from "../utils/mapHelpers.js";
 import { annotateCommand } from "../utils/commandAnnotator.js";
+import { EVENT_CODES } from "../utils/constants.js";
 import fs from "fs/promises";
 import path from "path";
 
@@ -20,9 +21,9 @@ export async function addDialogue(args) {
     const list = getEventPageList(mapData, eventId, pageIndex);
     const pos = insertPosition === -1 ? list.length - 1 : insertPosition;
     const cmds = [];
-    cmds.push({ code: 101, indent: 0, parameters: [face, faceIndex, background, position] });
+    cmds.push({ code: EVENT_CODES.SHOW_TEXT, indent: 0, parameters: [face, faceIndex, background, position] });
     const lines = text.split('\n');
-    lines.forEach(line => { cmds.push({ code: 401, indent: 0, parameters: [line] }); });
+    lines.forEach(line => { cmds.push({ code: EVENT_CODES.TEXT_DATA, indent: 0, parameters: [line] }); });
     list.splice(pos, 0, ...cmds);
     await saveMapData(projectPath, mapId, mapData);
     return { content: [{ type: "text", text: "Added dialogue." }] };
@@ -37,17 +38,17 @@ export async function addChoice(args) {
     const pos = insertPosition === -1 ? list.length - 1 : insertPosition;
 
     const cmds = [];
-    // 102: Show Choices
-    cmds.push({ code: 102, indent: 0, parameters: [options, cancelType] });
+    // Show Choices
+    cmds.push({ code: EVENT_CODES.SHOW_CHOICES, indent: 0, parameters: [options, cancelType] });
 
-    // 402: When [choice]
+    // When [choice]
     options.forEach((opt, i) => {
-        cmds.push({ code: 402, indent: 0, parameters: [i, opt] });
+        cmds.push({ code: EVENT_CODES.CHOICE_WHEN, indent: 0, parameters: [i, opt] });
         cmds.push({ code: 0, indent: 1, parameters: [] }); // Empty command for content
     });
 
-    // 404: End
-    cmds.push({ code: 404, indent: 0, parameters: [] });
+    // End
+    cmds.push({ code: EVENT_CODES.CHOICE_END, indent: 0, parameters: [] });
 
     list.splice(pos, 0, ...cmds);
     await saveMapData(projectPath, mapId, mapData);
@@ -63,10 +64,10 @@ export async function showPicture(args) {
     const list = getEventPageList(mapData, eventId, pageIndex);
     const pos = insertPosition === -1 ? list.length - 1 : insertPosition;
 
-    // 231: Show Picture
+    // Show Picture
     // parameters: [pictureId, pictureName, origin, x, y, scaleX, scaleY, opacity, blendMode]
     const cmd = {
-        code: 231,
+        code: EVENT_CODES.SHOW_PICTURE,
         indent: 0,
         parameters: [pictureId, pictureName, origin, x, y, 100, 100, 255, 0]
     };
@@ -86,8 +87,8 @@ export async function addLoop(args) {
 
     const pos = insertPosition === -1 ? list.length - 1 : insertPosition;
 
-    const loopCmd = { code: 112, indent: 0, parameters: [] };
-    const repeatCmd = { code: 413, indent: 0, parameters: [] };
+    const loopCmd = { code: EVENT_CODES.LOOP, indent: 0, parameters: [] };
+    const repeatCmd = { code: EVENT_CODES.LOOP_REPEAT, indent: 0, parameters: [] };
 
     list.splice(pos, 0, loopCmd, repeatCmd);
 
@@ -106,7 +107,7 @@ export async function addBreakLoop(args) {
     const list = getEventPageList(mapData, eventId, pageIndex);
 
     const pos = insertPosition === -1 ? list.length - 1 : insertPosition;
-    const cmd = { code: 113, indent: 0, parameters: [] };
+    const cmd = { code: EVENT_CODES.BREAK_LOOP, indent: 0, parameters: [] };
 
     list.splice(pos, 0, cmd);
 
@@ -134,9 +135,9 @@ export async function addConditionalBranch(args) {
         condition.class || 0
     ];
 
-    const branchStart = { code: 111, indent: 0, parameters: params };
-    const elseCmd = { code: 411, indent: 0, parameters: [] };
-    const branchEnd = { code: 412, indent: 0, parameters: [] };
+    const branchStart = { code: EVENT_CODES.CONDITIONAL_BRANCH, indent: 0, parameters: params };
+    const elseCmd = { code: EVENT_CODES.CONDITIONAL_ELSE, indent: 0, parameters: [] };
+    const branchEnd = { code: EVENT_CODES.CONDITIONAL_END, indent: 0, parameters: [] };
 
     if (includeElse) {
         list.splice(pos, 0, branchStart, elseCmd, branchEnd);
@@ -252,3 +253,4 @@ export async function searchEvents(args) {
         content: [{ type: "text", text: JSON.stringify(matches, null, 2) }],
     };
 }
+

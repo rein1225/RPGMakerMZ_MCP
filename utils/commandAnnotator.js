@@ -1,3 +1,8 @@
+/**
+ * Annotates an event command with a human-readable description.
+ * @param {import('../types/index.js').EventCommand} cmd - Event command to annotate
+ * @returns {import('../types/index.js').EventCommand} Annotated command with _description property
+ */
 export const annotateCommand = (cmd) => {
     let description = "";
     switch (cmd.code) {
