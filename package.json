@@ -16,6 +16,7 @@
     "puppeteer": "^24.31.0",
     "robotjs": "^0.6.0",
     "screenshot-desktop": "^1.15.3",
+    "serve-handler": "^6.1.6",
     "zod": "^4.1.12"
   }
 }

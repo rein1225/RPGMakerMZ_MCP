@@ -933,19 +933,51 @@ ${JSON.stringify(plugins, null, 2)};
       await validateProjectPath(projectPath);
 
       const gameExePath = path.join(projectPath, "Game.exe");
+      let useBrowserFallback = false;
+
       try {
         await fs.access(gameExePath);
       } catch {
-        throw new Error(`Game.exe not found at ${gameExePath}. Please deploy the game or provide correct path.`);
+        console.error("Game.exe not found. Falling back to browser-based playtest.");
+        useBrowserFallback = true;
       }
 
       const debugLogPath = path.join(__dirname, "debug_log.txt");
-      await fs.appendFile(debugLogPath, `Launching game: ${gameExePath} with remote debugging on port ${debugPort}\\n`);
-      console.error(`Launching game: ${gameExePath} with remote debugging on port ${debugPort}`);
+      let gameProcess;
+      let server;
+      let browserUrl;
 
-      const spawnArgs = [`--remote-debugging-port=${debugPort}`];
-      const gameProcess = spawn(gameExePath, spawnArgs, { detached: true, stdio: 'ignore' });
-      gameProcess.unref();
+      if (!useBrowserFallback) {
+        // Normal Game.exe launch
+        await fs.appendFile(debugLogPath, `Launching game: ${gameExePath} with remote debugging on port ${debugPort}\\n`);
+        console.error(`Launching game: ${gameExePath} with remote debugging on port ${debugPort}`);
+
+        const spawnArgs = [`--remote-debugging-port=${debugPort}`];
+        gameProcess = spawn(gameExePath, spawnArgs, { detached: true, stdio: 'ignore' });
+        gameProcess.unref();
+        browserUrl = `http://127.0.0.1:${debugPort}`;
+      } else {
+        // Browser Fallback: Start local server
+        const http = await import('http');
+        const serveHandler = (await import('serve-handler')).default;
+
+        server = http.createServer((request, response) => {
+          return serveHandler(request, response, {
+            public: projectPath,
+            headers: [
+              { source: "**/*", headers: [{ key: "Access-Control-Allow-Origin", value: "*" }] }
+            ]
+          });
+        });
+
+        // Find a free port or use a random one (0 lets OS choose)
+        await new Promise((resolve) => server.listen(0, () => resolve()));
+        const port = server.address().port;
+        console.error(`Local server running on port ${port}`);
+        await fs.appendFile(debugLogPath, `Local server running on port ${port}\\n`);
+
+        browserUrl = `http://localhost:${port}/index.html`;
+      }
 
       let result = { content: [] };
       let browser;
@@ -954,21 +986,41 @@ ${JSON.stringify(plugins, null, 2)};
       const maxWaitTime = Math.max(duration + 10000, 20000);
 
       try {
-        let connected = false;
-        while (Date.now() - startTime < maxWaitTime) {
-          try {
-            browser = await puppeteer.connect({ browserURL: `http://127.0.0.1:${debugPort}`, defaultViewport: null });
-            connected = true;
-            await fs.appendFile(debugLogPath, "Puppeteer connected successfully.\\n");
-            break;
-          } catch (e) {
-            await sleep(1000);
+        if (useBrowserFallback) {
+          // Launch our own browser instance
+          browser = await puppeteer.launch({
+            headless: false, // Show browser so user can see
+            defaultViewport: null,
+            args: ['--disable-web-security', '--allow-file-access-from-files']
+          });
+        } else {
+          // Connect to existing Game.exe
+          let connected = false;
+          while (Date.now() - startTime < maxWaitTime) {
+            try {
+              browser = await puppeteer.connect({ browserURL: browserUrl, defaultViewport: null });
+              connected = true;
+              await fs.appendFile(debugLogPath, "Puppeteer connected successfully.\\n");
+              break;
+            } catch (e) {
+              await sleep(1000);
+            }
+          }
+          if (!connected) {
+            await fs.appendFile(debugLogPath, "Puppeteer failed to connect.\\n");
           }
         }
 
-        if (connected && browser) {
+        if (browser) {
           const pages = await browser.pages();
-          const page = pages[0];
+          let page = pages[0];
+
+          if (useBrowserFallback) {
+            // Navigate to the page if we launched the browser
+            if (!page) page = await browser.newPage();
+            await page.goto(browserUrl);
+          }
+
           if (page) {
             try {
               await page.waitForSelector('#gameCanvas', { timeout: duration });
@@ -1011,14 +1063,14 @@ ${JSON.stringify(plugins, null, 2)};
                 });
                 const base64Data = canvasDataUrl.replace(/^data:image\/png;base64,/, "");
                 result.content.push({ type: "image/png", data: base64Data });
-                result.content.push({ type: "text", text: `Game launched and screenshot taken via Canvas.toDataURL. (New Game: ${startNewGame})` });
+                result.content.push({ type: "text", text: `Game launched and screenshot taken via Canvas.toDataURL. (New Game: ${startNewGame}, Fallback: ${useBrowserFallback})` });
                 capturedViaPuppeteer = true;
                 await fs.appendFile(debugLogPath, "Screenshot taken via Canvas.toDataURL.\\n");
               } catch (e) {
                 await fs.appendFile(debugLogPath, `Canvas toDataURL failed: ${e.message}\\n`);
                 const base64Img = await page.screenshot({ encoding: 'base64' });
                 result.content.push({ type: "image/png", data: base64Img });
-                result.content.push({ type: "text", text: `Game launched and screenshot taken via Puppeteer page.screenshot. (New Game: ${startNewGame})` });
+                result.content.push({ type: "text", text: `Game launched and screenshot taken via Puppeteer page.screenshot. (New Game: ${startNewGame}, Fallback: ${useBrowserFallback})` });
                 capturedViaPuppeteer = true;
                 await fs.appendFile(debugLogPath, "Screenshot taken via page.screenshot.\\n");
               }
@@ -1026,16 +1078,15 @@ ${JSON.stringify(plugins, null, 2)};
               await fs.appendFile(debugLogPath, `Puppeteer operation failed: ${e.message}\\n`);
             }
           }
-        } else {
-          await fs.appendFile(debugLogPath, "Puppeteer failed to connect.\\n");
         }
       } catch (e) {
         await fs.appendFile(debugLogPath, `Puppeteer connection logic error: ${e.message}\\n`);
       } finally {
-        if (browser) await browser.disconnect();
+        if (browser) await browser.close(); // Always close browser in fallback mode? Or keep open? For now close.
+        if (server) server.close();
       }
 
-      if (!capturedViaPuppeteer) {
+      if (!capturedViaPuppeteer && !useBrowserFallback) {
         console.error("Falling back to desktop screenshot");
         const elapsed = Date.now() - startTime;
         if (elapsed < duration) await sleep(duration - elapsed);
@@ -1050,7 +1101,7 @@ ${JSON.stringify(plugins, null, 2)};
         }
       }
 
-      if (autoClose) {
+      if (autoClose && gameProcess) {
         try {
           if (process.platform === 'win32') {
             spawn("taskkill", ["/pid", gameProcess.pid, "/f", "/t"]);
