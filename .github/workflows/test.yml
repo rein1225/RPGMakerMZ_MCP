@@ -36,3 +36,24 @@ jobs:
           files: ./coverage/coverage-final.json
           fail_ci_if_error: false
 
+  # E2E tests are skipped in CI as they require manual execution
+  # automation/test_*.js files are integration tests that need actual game environment
+  e2e:
+    runs-on: ubuntu-latest
+    if: false  # Disabled by default - enable manually when needed
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+      - name: Install dependencies
+        run: npm ci
+      - name: Note about E2E tests
+        run: |
+          echo "E2E tests in automation/ directory require manual execution"
+          echo "They are integration tests that need actual RPG Maker MZ game environment"
+          echo "To run them locally: node automation/test_*.js"
+
+
+

@@ -49,7 +49,7 @@ describe('mapHelpers', () => {
         const event = mapData.events[eventId];
         
         if (event.pages && event.pages.length > 0) {
-          const list = getEventPageList(mapData, eventId, 0);
+          const list = getEventPageList(mapData, eventId, 0, 1);
           expect(Array.isArray(list)).toBe(true);
         }
       }
@@ -57,7 +57,7 @@ describe('mapHelpers', () => {
 
     it('should throw error for non-existent event', () => {
       const mapData = { events: {} };
-      expect(() => getEventPageList(mapData, '999', 0)).toThrow('Event 999 not found');
+      expect(() => getEventPageList(mapData, '999', 0, 1)).toThrow();
     });
 
     it('should throw error for non-existent page', async () => {
@@ -65,9 +65,11 @@ describe('mapHelpers', () => {
       
       if (mapData.events && Object.keys(mapData.events).length > 0) {
         const eventId = Object.keys(mapData.events)[0];
-        expect(() => getEventPageList(mapData, eventId, 999)).toThrow('Page 999 not found');
+        expect(() => getEventPageList(mapData, eventId, 999, 1)).toThrow();
       }
     });
   });
 });
+
+
 

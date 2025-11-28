@@ -9,7 +9,7 @@ export async function getEventPage(args) {
     const { projectPath, mapId, eventId, pageIndex } = args;
     await validateProjectPath(projectPath);
     const mapData = await loadMapData(projectPath, mapId);
-    const list = getEventPageList(mapData, eventId, pageIndex);
+    const list = getEventPageList(mapData, eventId, pageIndex, mapId);
     const annotatedList = list.map(annotateCommand);
     return { content: [{ type: "text", text: JSON.stringify(annotatedList, null, 2) }] };
 }
@@ -18,7 +18,7 @@ export async function addDialogue(args) {
     const { projectPath, mapId, eventId, pageIndex, insertPosition, text, face = "", faceIndex = 0, background = 0, position = 2 } = args;
     await validateProjectPath(projectPath);
     const mapData = await loadMapData(projectPath, mapId);
-    const list = getEventPageList(mapData, eventId, pageIndex);
+    const list = getEventPageList(mapData, eventId, pageIndex, mapId);
     const pos = insertPosition === -1 ? list.length - 1 : insertPosition;
     const cmds = [];
     cmds.push({ code: EVENT_CODES.SHOW_TEXT, indent: 0, parameters: [face, faceIndex, background, position] });
@@ -34,7 +34,7 @@ export async function addChoice(args) {
     await validateProjectPath(projectPath);
 
     const mapData = await loadMapData(projectPath, mapId);
-    const list = getEventPageList(mapData, eventId, pageIndex);
+    const list = getEventPageList(mapData, eventId, pageIndex, mapId);
     const pos = insertPosition === -1 ? list.length - 1 : insertPosition;
 
     const cmds = [];
@@ -61,7 +61,7 @@ export async function showPicture(args) {
     await validateProjectPath(projectPath);
 
     const mapData = await loadMapData(projectPath, mapId);
-    const list = getEventPageList(mapData, eventId, pageIndex);
+    const list = getEventPageList(mapData, eventId, pageIndex, mapId);
     const pos = insertPosition === -1 ? list.length - 1 : insertPosition;
 
     // Show Picture
@@ -83,7 +83,7 @@ export async function addLoop(args) {
     await validateProjectPath(projectPath);
 
     const mapData = await loadMapData(projectPath, mapId);
-    const list = getEventPageList(mapData, eventId, pageIndex);
+    const list = getEventPageList(mapData, eventId, pageIndex, mapId);
 
     const pos = insertPosition === -1 ? list.length - 1 : insertPosition;
 
@@ -104,7 +104,7 @@ export async function addBreakLoop(args) {
     await validateProjectPath(projectPath);
 
     const mapData = await loadMapData(projectPath, mapId);
-    const list = getEventPageList(mapData, eventId, pageIndex);
+    const list = getEventPageList(mapData, eventId, pageIndex, mapId);
 
     const pos = insertPosition === -1 ? list.length - 1 : insertPosition;
     const cmd = { code: EVENT_CODES.BREAK_LOOP, indent: 0, parameters: [] };
@@ -123,7 +123,7 @@ export async function addConditionalBranch(args) {
     await validateProjectPath(projectPath);
 
     const mapData = await loadMapData(projectPath, mapId);
-    const list = getEventPageList(mapData, eventId, pageIndex);
+    const list = getEventPageList(mapData, eventId, pageIndex, mapId);
 
     const pos = insertPosition === -1 ? list.length - 1 : insertPosition;
 
@@ -157,7 +157,7 @@ export async function deleteEventCommand(args) {
     await validateProjectPath(projectPath);
 
     const mapData = await loadMapData(projectPath, mapId);
-    const list = getEventPageList(mapData, eventId, pageIndex);
+    const list = getEventPageList(mapData, eventId, pageIndex, mapId);
 
     if (commandIndex < 0 || commandIndex >= list.length) {
         throw new Error(`Command index ${commandIndex} out of bounds (0-${list.length - 1})`);
@@ -177,7 +177,7 @@ export async function updateEventCommand(args) {
     await validateProjectPath(projectPath);
 
     const mapData = await loadMapData(projectPath, mapId);
-    const list = getEventPageList(mapData, eventId, pageIndex);
+    const list = getEventPageList(mapData, eventId, pageIndex, mapId);
 
     if (commandIndex < 0 || commandIndex >= list.length) {
         throw new Error(`Command index ${commandIndex} out of bounds (0-${list.length - 1})`);

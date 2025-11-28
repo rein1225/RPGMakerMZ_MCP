@@ -1,26 +1,31 @@
 import fs from "fs/promises";
 import path from "path";
+import { Errors } from "./errors.js";
 
 /**
  * Validates that the given path is a valid RPG Maker MZ project directory.
  * @param {string} projectPath - Path to the project directory
  * @returns {Promise<void>}
- * @throws {Error} If the path is invalid or not a valid RPG Maker MZ project
+ * @throws {MCPError} If the path is invalid or not a valid RPG Maker MZ project
  */
 export async function validateProjectPath(projectPath) {
     try {
         const stats = await fs.stat(projectPath);
         if (!stats.isDirectory()) {
-            throw new Error(`Path is not a directory: ${projectPath}`);
+            throw Errors.projectNotDirectory(projectPath);
         }
         const projectFile = path.join(projectPath, "game.rmmzproject");
         try {
             await fs.access(projectFile);
         } catch {
-            throw new Error(`Not a valid RPG Maker MZ project (game.rmmzproject not found): ${projectPath}`);
+            throw Errors.projectFileNotFound(projectPath);
         }
     } catch (error) {
-        throw new Error(`Invalid project path: ${error.message}`);
+        if (error.code && error.code.startsWith('E')) {
+            // Already an MCPError, re-throw
+            throw error;
+        }
+        throw Errors.invalidProjectPath(projectPath, error.message);
     }
 }
 
