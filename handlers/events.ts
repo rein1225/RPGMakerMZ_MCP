@@ -3,11 +3,14 @@ import { loadMapData, saveMapData, getEventPageList } from "../utils/mapHelpers.
 import { annotateCommand } from "../utils/commandAnnotator.js";
 import { EVENT_CODES } from "../utils/constants.js";
 import { HandlerResponse, EventCommand } from "../types/index.js";
+import { validateEventCommand } from "../schemas/mz_structures.js";
+import { Errors } from "../utils/errors.js";
+import { Logger } from "../utils/logger.js";
 import fs from "fs/promises";
 import path from "path";
 
 type ProjectArgs = { projectPath: string };
-type EventPageArgs = ProjectArgs & { mapId: number; eventId: string; pageIndex: number };
+type EventPageArgs = ProjectArgs & { mapId: number; eventId: number; pageIndex: number };
 type EventCommandArgs = EventPageArgs & { insertPosition: number };
 type AddDialogueArgs = EventCommandArgs & { text: string; face?: string; faceIndex?: number; background?: number; position?: number };
 type AddChoiceArgs = EventCommandArgs & { options: string[]; cancelType?: number };
@@ -21,7 +24,7 @@ export async function getEventPage(args: EventPageArgs): Promise<HandlerResponse
     const { projectPath, mapId, eventId, pageIndex } = args;
     await validateProjectPath(projectPath);
     const mapData = await loadMapData(projectPath, mapId);
-    const list = getEventPageList(mapData, eventId, pageIndex, mapId);
+    const list = getEventPageList(mapData, String(eventId), pageIndex, mapId);
     const annotatedList = list.map(annotateCommand);
     return { content: [{ type: "text", text: JSON.stringify(annotatedList, null, 2) }] };
 }
@@ -30,7 +33,7 @@ export async function addDialogue(args: AddDialogueArgs): Promise<HandlerRespons
     const { projectPath, mapId, eventId, pageIndex, insertPosition, text, face = "", faceIndex = 0, background = 0, position = 2 } = args;
     await validateProjectPath(projectPath);
     const mapData = await loadMapData(projectPath, mapId);
-    const list = getEventPageList(mapData, eventId, pageIndex, mapId);
+    const list = getEventPageList(mapData, String(eventId), pageIndex, mapId);
     const pos = insertPosition === -1 ? list.length - 1 : insertPosition;
     const cmds: EventCommand[] = [];
     cmds.push({ code: EVENT_CODES.SHOW_TEXT, indent: 0, parameters: [face, faceIndex, background, position] });
@@ -46,7 +49,7 @@ export async function addChoice(args: AddChoiceArgs): Promise<HandlerResponse> {
     await validateProjectPath(projectPath);
 
     const mapData = await loadMapData(projectPath, mapId);
-    const list = getEventPageList(mapData, eventId, pageIndex, mapId);
+    const list = getEventPageList(mapData, String(eventId), pageIndex, mapId);
     const pos = insertPosition === -1 ? list.length - 1 : insertPosition;
 
     const cmds: EventCommand[] = [];
@@ -73,7 +76,7 @@ export async function showPicture(args: ShowPictureArgs): Promise<HandlerRespons
     await validateProjectPath(projectPath);
 
     const mapData = await loadMapData(projectPath, mapId);
-    const list = getEventPageList(mapData, eventId, pageIndex, mapId);
+    const list = getEventPageList(mapData, String(eventId), pageIndex, mapId);
     const pos = insertPosition === -1 ? list.length - 1 : insertPosition;
 
     // Show Picture
@@ -95,7 +98,7 @@ export async function addLoop(args: EventCommandArgs): Promise<HandlerResponse> 
     await validateProjectPath(projectPath);
 
     const mapData = await loadMapData(projectPath, mapId);
-    const list = getEventPageList(mapData, eventId, pageIndex, mapId);
+    const list = getEventPageList(mapData, String(eventId), pageIndex, mapId);
 
     const pos = insertPosition === -1 ? list.length - 1 : insertPosition;
 
@@ -116,7 +119,7 @@ export async function addBreakLoop(args: EventCommandArgs): Promise<HandlerRespo
     await validateProjectPath(projectPath);
 
     const mapData = await loadMapData(projectPath, mapId);
-    const list = getEventPageList(mapData, eventId, pageIndex, mapId);
+    const list = getEventPageList(mapData, String(eventId), pageIndex, mapId);
 
     const pos = insertPosition === -1 ? list.length - 1 : insertPosition;
     const cmd: EventCommand = { code: EVENT_CODES.BREAK_LOOP, indent: 0, parameters: [] };
@@ -135,7 +138,7 @@ export async function addConditionalBranch(args: AddConditionalBranchArgs): Prom
     await validateProjectPath(projectPath);
 
     const mapData = await loadMapData(projectPath, mapId);
-    const list = getEventPageList(mapData, eventId, pageIndex, mapId);
+    const list = getEventPageList(mapData, String(eventId), pageIndex, mapId);
 
     const pos = insertPosition === -1 ? list.length - 1 : insertPosition;
 
@@ -169,7 +172,7 @@ export async function deleteEventCommand(args: DeleteEventCommandArgs): Promise<
     await validateProjectPath(projectPath);
 
     const mapData = await loadMapData(projectPath, mapId);
-    const list = getEventPageList(mapData, eventId, pageIndex, mapId);
+    const list = getEventPageList(mapData, String(eventId), pageIndex, mapId);
 
     if (commandIndex < 0 || commandIndex >= list.length) {
         throw new Error(`Command index ${commandIndex} out of bounds (0-${list.length - 1})`);
@@ -188,8 +191,14 @@ export async function updateEventCommand(args: UpdateEventCommandArgs): Promise<
     const { projectPath, mapId, eventId, pageIndex, commandIndex, newCommand } = args;
     await validateProjectPath(projectPath);
 
+    // Zodバリデーション
+    const validation = validateEventCommand(newCommand);
+    if (!validation.success) {
+        throw Errors.invalidParameter("newCommand", validation.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', '));
+    }
+
     const mapData = await loadMapData(projectPath, mapId);
-    const list = getEventPageList(mapData, eventId, pageIndex, mapId);
+    const list = getEventPageList(mapData, String(eventId), pageIndex, mapId);
 
     if (commandIndex < 0 || commandIndex >= list.length) {
         throw new Error(`Command index ${commandIndex} out of bounds (0-${list.length - 1})`);
@@ -247,7 +256,8 @@ export async function searchEvents(args: SearchEventsArgs): Promise<HandlerRespo
         const commonEvents = JSON.parse(await fs.readFile(commonEventsPath, "utf-8")) as Array<Record<string, unknown> | null>;
         searchInList(commonEvents, "CommonEvents");
     } catch (e: unknown) {
-        // Ignore missing file
+        // Expected file not found is non-critical for search
+        await Logger.debug(`Expected CommonEvents.json not found (non-critical)`, e);
     }
 
     try {
@@ -265,11 +275,13 @@ export async function searchEvents(args: SearchEventsArgs): Promise<HandlerRespo
                     searchInList(Object.values(events), `Map ${mapInfo.id}: ${mapInfo.name as string}`);
                 }
             } catch (e: unknown) {
-                // Ignore missing file
+                // Expected file not found is non-critical for search
+                await Logger.debug(`Expected map file not found (non-critical): ${mapFilename}`, e);
             }
         }
     } catch (e: unknown) {
-        // Ignore missing file
+        // Expected file not found is non-critical for search
+        await Logger.debug(`Expected MapInfos.json not found (non-critical)`, e);
     }
 
     return {
