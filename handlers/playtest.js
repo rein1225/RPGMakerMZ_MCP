@@ -55,7 +55,12 @@ export async function runPlaytest(args) {
                 });
             });
 
-            await new Promise((resolve) => server.listen(0, () => resolve()));
+            await new Promise((resolve, reject) => {
+                server.once('error', (err) => {
+                    reject(err);
+                });
+                server.listen(0, () => resolve());
+            });
             const port = server.address().port;
             await Logger.info(`Local server running on port ${port}`);
             await Logger.debug(`Local server running on port ${port}`);
@@ -78,7 +83,6 @@ export async function runPlaytest(args) {
             capturedViaPuppeteer = true;
 
         } else {
-            // Game.exe mode
             await Logger.debug(`Launching game: ${gameExePath} with remote debugging on port ${debugPort}`);
             await Logger.info(`Launching game: ${gameExePath} with remote debugging on port ${debugPort}`);
 
@@ -219,6 +223,10 @@ async function captureGameScreenshot(page, startNewGame, duration, startTime) {
 
 export async function inspectGameState(args) {
     const { port = DEFAULTS.PORT, script } = args;
+
+    // Security Warning: Evaluating arbitrary code is dangerous.
+    // Ensure this tool is only used in a trusted local environment.
+    await Logger.warn(`Executing arbitrary code via inspect_game_state: ${script}`);
 
     try {
         const browser = await puppeteer.connect({

@@ -1,6 +1,7 @@
 import fs from "fs/promises";
 import path from "path";
 import { validateProjectPath } from "../utils/validation.js";
+import { Errors } from "../utils/errors.js";
 
 export async function addActor(args) {
     const { projectPath, name, classId = 1, initialLevel = 1, maxLevel = 99 } = args;
@@ -11,7 +12,11 @@ export async function addActor(args) {
     try {
         actors = JSON.parse(await fs.readFile(filePath, "utf-8"));
     } catch (e) {
-        actors = [null];
+        if (e.code === 'ENOENT') {
+            actors = [null];
+        } else {
+            throw Errors.dataFileReadError('Actors.json', e.message);
+        }
     }
 
     const newId = actors.length;
@@ -49,7 +54,11 @@ export async function addItem(args) {
     try {
         items = JSON.parse(await fs.readFile(filePath, "utf-8"));
     } catch (e) {
-        items = [null];
+        if (e.code === 'ENOENT') {
+            items = [null];
+        } else {
+            throw Errors.dataFileReadError('Items.json', e.message);
+        }
     }
 
     const newId = items.length;
@@ -90,7 +99,11 @@ export async function addSkill(args) {
     try {
         skills = JSON.parse(await fs.readFile(filePath, "utf-8"));
     } catch (e) {
-        skills = [null];
+        if (e.code === 'ENOENT') {
+            skills = [null];
+        } else {
+            throw Errors.dataFileReadError('Skills.json', e.message);
+        }
     }
 
     const newId = skills.length;

@@ -10,6 +10,11 @@ export const DEFAULTS = {
     ASSET_TYPE: "all"
 };
 
+export const LIMITS = {
+    MAX_LAYER: 5,
+    MIN_LAYER: 0
+};
+
 export const PATHS = {
     DATA_DIR: "data",
     IMG_DIR: "img",

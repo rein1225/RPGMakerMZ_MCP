@@ -1,6 +1,7 @@
 import fs from "fs/promises";
 import path from "path";
 import { validateProjectPath, getFilesRecursively } from "../utils/validation.js";
+import { Errors } from "../utils/errors.js";
 
 export async function getProjectInfo(args) {
     const { projectPath } = args;
@@ -52,7 +53,14 @@ export async function readDataFile(args) {
     }
 
     const filePath = path.join(projectPath, "data", filename);
-    const content = await fs.readFile(filePath, "utf-8");
+    const resolvedPath = path.resolve(filePath);
+    const dataDir = path.resolve(projectPath, "data");
+
+    if (!resolvedPath.startsWith(dataDir)) {
+        throw Errors.assetPathInvalid(filename);
+    }
+
+    const content = await fs.readFile(resolvedPath, "utf-8");
 
     return {
         content: [
@@ -75,7 +83,14 @@ export async function writeDataFile(args) {
     JSON.parse(content);
 
     const filePath = path.join(projectPath, "data", filename);
-    await fs.writeFile(filePath, content, "utf-8");
+    const resolvedPath = path.resolve(filePath);
+    const dataDir = path.resolve(projectPath, "data");
+
+    if (!resolvedPath.startsWith(dataDir)) {
+        throw Errors.assetPathInvalid(filename);
+    }
+
+    await fs.writeFile(resolvedPath, content, "utf-8");
 
     return {
         content: [

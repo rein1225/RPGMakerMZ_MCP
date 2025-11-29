@@ -1,13 +1,14 @@
 import fs from "fs/promises";
 import path from "path";
 import { validateProjectPath } from "../utils/validation.js";
+import { Errors } from "../utils/errors.js";
 
 export async function writePluginCode(args) {
     const { projectPath, filename, code } = args;
     await validateProjectPath(projectPath);
 
     if (!filename.endsWith(".js")) {
-        throw new Error("Plugin filename must end with .js");
+        throw Errors.invalidParameter("filename", "Plugin filename must end with .js");
     }
 
     const pluginsDir = path.join(projectPath, "js", "plugins");
@@ -40,7 +41,7 @@ export async function getPluginsConfig(args) {
         const content = await fs.readFile(pluginsConfigPath, "utf-8");
         const match = content.match(/var\s+\$plugins\s*=\s*(\[[\s\S]*?\])\s*;/);
         if (!match) {
-            throw new Error("Could not parse plugins.js format");
+            throw Errors.dataFileReadError("plugins.js", "Could not parse plugins.js format");
         }
         const pluginsJson = match[1];
         JSON.parse(pluginsJson);

@@ -1,5 +1,6 @@
 import { validateProjectPath } from "../utils/validation.js";
 import { loadMapData, saveMapData } from "../utils/mapHelpers.js";
+import { LIMITS } from "../utils/constants.js";
 import fs from "fs/promises";
 import path from "path";
 
@@ -14,8 +15,8 @@ export async function drawMapTile(args) {
     if (x < 0 || x >= width || y < 0 || y >= height) {
         throw new Error(`Coordinates (${x},${y}) out of bounds (W:${width}, H:${height})`);
     }
-    if (layer < 0 || layer > 5) {
-        throw new Error(`Layer ${layer} out of bounds (0-5)`);
+    if (layer < LIMITS.MIN_LAYER || layer > LIMITS.MAX_LAYER) {
+        throw new Error(`Layer ${layer} out of bounds (${LIMITS.MIN_LAYER}-${LIMITS.MAX_LAYER})`);
     }
 
     // Calculate index in flattened array: (z * height + y) * width + x

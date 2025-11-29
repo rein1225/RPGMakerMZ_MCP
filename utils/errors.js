@@ -179,5 +179,13 @@ export const Errors = {
             { parameterName }
         );
     },
+
+    assetPathInvalid: (path) => {
+        return new MCPError(
+            ErrorCodes.ASSET_PATH_INVALID,
+            `Invalid asset path (path traversal detected): ${path}`,
+            { path }
+        );
+    },
 };
 
