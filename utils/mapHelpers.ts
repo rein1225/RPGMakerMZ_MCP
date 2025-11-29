@@ -2,6 +2,7 @@ import fs from "fs/promises";
 import path from "path";
 import { Errors } from "./errors.js";
 import type { MapData, EventCommand } from "../types/index.js";
+import { withBackup, cleanupOldBackups } from "./backup.js";
 
 /**
  * Loads map data from a project directory.
@@ -29,7 +30,16 @@ export async function loadMapData(projectPath: string, mapId: number): Promise<M
 export async function saveMapData(projectPath: string, mapId: number, mapData: MapData): Promise<void> {
     const mapIdPadded = String(mapId).padStart(3, "0");
     const mapFilePath = path.join(projectPath, "data", `Map${mapIdPadded}.json`);
-    await fs.writeFile(mapFilePath, JSON.stringify(mapData, null, 2), "utf-8");
+    
+    // Write with backup
+    await withBackup(mapFilePath, async () => {
+        await fs.writeFile(mapFilePath, JSON.stringify(mapData, null, 2), "utf-8");
+    });
+
+    // Cleanup old backups (non-blocking)
+    cleanupOldBackups(mapFilePath).catch(() => {
+        // Ignore cleanup errors
+    });
 }
 
 /**

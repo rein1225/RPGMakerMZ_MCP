@@ -397,10 +397,27 @@ function safeEvaluate(script: string): unknown {
 export async function inspectGameState(args: InspectGameStateArgs): Promise<HandlerResponse> {
     const { port = DEFAULTS.PORT, script } = args;
 
+    // Security: Input length limit (ReDoS対策)
+    const MAX_SCRIPT_LENGTH = 100;
+    if (script.length > MAX_SCRIPT_LENGTH) {
+        await Logger.error(`Security violation: Script too long`, new Error(`Script length: ${script.length}, max: ${MAX_SCRIPT_LENGTH}`));
+        throw new Error(`Script too long (max ${MAX_SCRIPT_LENGTH} chars)`);
+    }
+
     // Security: Validate script against whitelist before execution
     if (!isScriptAllowed(script)) {
         await Logger.error(`Security violation: Attempted to execute non-whitelisted script`, new Error(script));
         throw new Error(`Script not allowed: ${script}. Only whitelisted RPG Maker MZ game state access patterns are permitted.`);
+    }
+
+    // Security: ID range validation (1-9999)
+    const idMatch = script.match(/\((\d+)\)/);
+    if (idMatch) {
+        const id = parseInt(idMatch[1], 10);
+        if (isNaN(id) || id < 1 || id > 9999) {
+            await Logger.error(`Security violation: ID out of range`, new Error(`ID: ${id}`));
+            throw new Error(`ID out of allowed range (1-9999): ${id}`);
+        }
     }
 
     await Logger.info(`Executing whitelisted game state access: ${script}`);

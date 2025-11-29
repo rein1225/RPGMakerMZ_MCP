@@ -3,6 +3,7 @@ import path from "path";
 import { validateProjectPath } from "../utils/validation.js";
 import { Errors } from "../utils/errors.js";
 import { HandlerResponse, Actor, Item, Skill } from "../types/index.js";
+import { withBackup, cleanupOldBackups } from "../utils/backup.js";
 
 type ProjectArgs = { projectPath: string };
 type AddActorArgs = ProjectArgs & { name: string; classId?: number; initialLevel?: number; maxLevel?: number };
@@ -45,7 +46,16 @@ export async function addActor(args: AddActorArgs): Promise<HandlerResponse> {
     };
 
     actors.push(newActor);
-    await fs.writeFile(filePath, JSON.stringify(actors, null, 2), "utf-8");
+    
+    // Write with backup
+    await withBackup(filePath, async () => {
+        await fs.writeFile(filePath, JSON.stringify(actors, null, 2), "utf-8");
+    });
+
+    // Cleanup old backups (non-blocking)
+    cleanupOldBackups(filePath).catch(() => {
+        // Ignore cleanup errors
+    });
 
     return {
         content: [{ type: "text", text: `Successfully added actor "${name}" (ID: ${newId}).` }],
@@ -91,7 +101,16 @@ export async function addItem(args: AddItemArgs): Promise<HandlerResponse> {
     };
 
     items.push(newItem);
-    await fs.writeFile(filePath, JSON.stringify(items, null, 2), "utf-8");
+    
+    // Write with backup
+    await withBackup(filePath, async () => {
+        await fs.writeFile(filePath, JSON.stringify(items, null, 2), "utf-8");
+    });
+
+    // Cleanup old backups (non-blocking)
+    cleanupOldBackups(filePath).catch(() => {
+        // Ignore cleanup errors
+    });
 
     return {
         content: [{ type: "text", text: `Successfully added item "${name}" (ID: ${newId}).` }],
@@ -142,7 +161,16 @@ export async function addSkill(args: AddSkillArgs): Promise<HandlerResponse> {
     };
 
     skills.push(newSkill);
-    await fs.writeFile(filePath, JSON.stringify(skills, null, 2), "utf-8");
+    
+    // Write with backup
+    await withBackup(filePath, async () => {
+        await fs.writeFile(filePath, JSON.stringify(skills, null, 2), "utf-8");
+    });
+
+    // Cleanup old backups (non-blocking)
+    cleanupOldBackups(filePath).catch(() => {
+        // Ignore cleanup errors
+    });
 
     return {
         content: [{ type: "text", text: `Successfully added skill "${name}" (ID: ${newId}).` }],

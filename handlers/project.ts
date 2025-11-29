@@ -2,6 +2,8 @@ import fs from "fs/promises";
 import path from "path";
 import { validateProjectPath, getFilesRecursively } from "../utils/validation.js";
 import { Errors } from "../utils/errors.js";
+import { withBackup, cleanupOldBackups } from "../utils/backup.js";
+import { Logger } from "../utils/logger.js";
 
 type HandlerContent = { type: "text"; text: string };
 type HandlerResponse = { content: HandlerContent[] };
@@ -107,19 +109,39 @@ export async function writeDataFile(args: WriteDataFileArgs): Promise<HandlerRes
         throw Errors.assetPathInvalid(filename);
     }
 
-    const filePath = path.join(projectPath, "data", normalizedFilename);
-    const resolvedPath = path.resolve(filePath);
+    const resolvedDir = path.resolve(projectPath, "data");
+    const resolvedPath = path.resolve(resolvedDir, normalizedFilename);
     
-    // Resolve real path to prevent symlink attacks
-    const realDataDir = await fs.realpath(path.resolve(projectPath, "data"));
-    const realFilePath = await fs.realpath(path.dirname(resolvedPath));
+    // First check: normalized path must be within data directory
+    if (!resolvedPath.startsWith(resolvedDir + path.sep) && resolvedPath !== resolvedDir) {
+        throw Errors.assetPathInvalid(filename);
+    }
     
-    // Verify resolved directory is within data directory
+    // Second check: resolve real paths to prevent symlink attacks
+    const realDataDir = await fs.realpath(resolvedDir);
+    // Check if file exists, if not, check parent directory
+    let realFilePath: string;
+    try {
+        realFilePath = await fs.realpath(resolvedPath);
+    } catch {
+        // File doesn't exist yet, check parent directory
+        realFilePath = await fs.realpath(path.dirname(resolvedPath));
+    }
+    
+    // Verify resolved path is within real data directory
     if (!realFilePath.startsWith(realDataDir + path.sep) && realFilePath !== realDataDir) {
         throw Errors.assetPathInvalid(filename);
     }
 
-    await fs.writeFile(resolvedPath, content, "utf-8");
+    // Write with backup
+    await withBackup(resolvedPath, async () => {
+        await fs.writeFile(resolvedPath, content, "utf-8");
+    });
+
+    // Cleanup old backups (non-blocking)
+    cleanupOldBackups(resolvedPath).catch(() => {
+        // Ignore cleanup errors
+    });
 
     return {
         content: [
@@ -188,7 +210,9 @@ export async function checkAssetsIntegrity(args: ProjectArgs): Promise<HandlerRe
                     const imgPath = path.join(projectPath, "img", "characters", `${imageName}.png`);
                     try {
                         await fs.access(imgPath);
-                    } catch {
+                    } catch (e: unknown) {
+                        // Missing image is expected in some cases, log as debug
+                        await Logger.debug(`Expected missing image (non-critical): ${imgPath}`, e);
                         issues.push({
                             type: "missing_image",
                             file: dataFile,
@@ -200,8 +224,9 @@ export async function checkAssetsIntegrity(args: ProjectArgs): Promise<HandlerRe
                     }
                 }
             }
-        } catch {
-            // Ignore missing files
+        } catch (e: unknown) {
+            // Expected file not found is non-critical for integrity check
+            await Logger.debug(`Expected data file not found (non-critical): ${dataFile}`, e);
         }
     };
 
@@ -225,8 +250,9 @@ export async function checkAssetsIntegrity(args: ProjectArgs): Promise<HandlerRe
                 }
             }
         }
-    } catch {
-        // Ignore errors
+    } catch (e: unknown) {
+        // Expected errors during integrity check are non-critical
+        await Logger.debug(`Expected error during integrity check (non-critical)`, e);
     }
 
     return {

@@ -3,6 +3,7 @@ import path from "path";
 import { validateProjectPath } from "../utils/validation.js";
 import { Errors } from "../utils/errors.js";
 import { HandlerResponse } from "../types/index.js";
+import { withBackup, cleanupOldBackups } from "../utils/backup.js";
 
 type ProjectArgs = { projectPath: string };
 type WritePluginCodeArgs = ProjectArgs & { filename: string; code: string };
@@ -12,8 +13,19 @@ export async function writePluginCode(args: WritePluginCodeArgs): Promise<Handle
     const { projectPath, filename, code } = args;
     await validateProjectPath(projectPath);
 
+    // Path traversal対策: basenameでサニタイズ
+    const sanitizedFilename = path.basename(filename);
+    if (sanitizedFilename !== filename || filename.includes("..")) {
+        throw Errors.assetPathInvalid(filename);
+    }
+
     if (!filename.endsWith(".js")) {
         throw Errors.invalidParameter("filename", "Plugin filename must end with .js");
+    }
+
+    // ファイル名の文字制限（英数字・アンダースコア・ハイフンのみ）
+    if (!/^[a-zA-Z0-9_-]+\.js$/.test(filename)) {
+        throw Errors.invalidParameter("filename", "Invalid characters in filename. Only alphanumeric, underscore, and hyphen are allowed.");
     }
 
     const pluginsDir = path.join(projectPath, "js", "plugins");
@@ -23,8 +35,17 @@ export async function writePluginCode(args: WritePluginCodeArgs): Promise<Handle
         // Ignore if exists
     }
 
-    const filePath = path.join(pluginsDir, filename);
-    await fs.writeFile(filePath, code, "utf-8");
+    const filePath = path.join(pluginsDir, sanitizedFilename);
+    
+    // Write with backup
+    await withBackup(filePath, async () => {
+        await fs.writeFile(filePath, code, "utf-8");
+    });
+
+    // Cleanup old backups (non-blocking)
+    cleanupOldBackups(filePath).catch(() => {
+        // Ignore cleanup errors
+    });
 
     return {
         content: [
@@ -86,7 +107,15 @@ var $plugins =
 ${JSON.stringify(plugins, null, 2)};
 `;
 
-    await fs.writeFile(pluginsConfigPath, content, "utf-8");
+    // Write with backup
+    await withBackup(pluginsConfigPath, async () => {
+        await fs.writeFile(pluginsConfigPath, content, "utf-8");
+    });
+
+    // Cleanup old backups (non-blocking)
+    cleanupOldBackups(pluginsConfigPath).catch(() => {
+        // Ignore cleanup errors
+    });
 
     return {
         content: [
