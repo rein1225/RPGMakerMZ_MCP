@@ -22,12 +22,14 @@
 npm install
 ```
 
-### 1.5 TypeScriptユーティリティの再ビルド
+### 1.5 TypeScriptビルド（オプション）
 
-一部ユーティリティはTypeScript化されているため、変更後は下記のコマンドで `.ts` → `.js` を再生成してください。
+本プロジェクトはTypeScript化されていますが、実行時には`.ts`ファイルを直接使用できます（`tsx`や`ts-node`を使用する場合）。
+ビルドが必要な場合は以下のコマンドを実行してください：
 
 ```bash
-npm run build:utils
+npm run build:utils    # utils/ ディレクトリのビルド
+npm run build:handlers # handlers/ ディレクトリのビルド
 ```
 
 詳細な移行計画は `docs/typescript-plan.md` を参照。
@@ -35,6 +37,29 @@ npm run build:utils
 ### 2. MCPサーバーの起動
 
 Antigravityの設定ファイル（`mcp_config.json`）に以下を追加：
+
+**方法1: tsxを使用（推奨）**
+
+```json
+{
+  "mcpServers": {
+    "rpg-maker-mz": {
+      "command": "npx",
+      "args": ["tsx", "c:/Users/1225s/Desktop/dev/RPGMakerMZ_MCP/index.ts"],
+      "cwd": "c:/Users/1225s/Desktop/dev/RPGMakerMZ_MCP"
+    }
+  }
+}
+```
+
+**方法2: ビルドしてから実行**
+
+```bash
+npm run build:handlers
+npm run build:index
+```
+
+その後、`index.js`を実行：
 
 ```json
 {
@@ -322,7 +347,19 @@ search_events({ projectPath: "c:/path/to/project", query: "ポーション" });
 ### ファイル構成
 ```
 RPGツクールMZ＿MCP/
-├── index.js                    # MCPサーバー本体
+├── index.ts                    # MCPサーバー本体（TypeScript）
+├── handlers/                   # ハンドラ層（TypeScript化済み）
+│   ├── project.ts
+│   ├── database.ts
+│   ├── plugins.ts
+│   ├── map.ts
+│   ├── events.ts
+│   └── playtest.ts
+├── utils/                      # ユーティリティ層（TypeScript化済み）
+│   ├── validation.ts
+│   ├── mapHelpers.ts
+│   └── ...
+├── types/                      # 型定義ファイル
 ├── resources/
 │   └── event_commands.json     # イベントコマンドリファレンス
 ├── schemas/
@@ -347,6 +384,17 @@ RPGツクールMZ＿MCP/
 MIT License
 
 ## 更新履歴
+### v1.4.0 (2025-11-29)
+- セキュリティ強化: パストラバーサル対策、任意コード実行の警告追加
+- エラーハンドリングの改善と統一
+- 非同期処理の安全性向上
+- マジックナンバーの排除
+
+### v1.5.0 (2025-12-XX)
+- **TypeScript移行完了**: 全handlers層とエントリーポイントをTypeScript化
+- CI/CD統合: GitHub Actionsに型チェックを追加
+- 型安全性の大幅向上
+
 ### v1.4.0 (2025-11-29)
 - セキュリティ強化: パストラバーサル対策、任意コード実行の警告追加
 - エラーハンドリングの改善と統一
