@@ -30,7 +30,38 @@ describe('mapHelpers', () => {
     it('should save map data', async () => {
       const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'mz-map-'));
       const tempProject = path.join(tempRoot, 'project');
-      await fs.cp(testProjectPath, tempProject, { recursive: true });
+      
+      // Copy files individually, excluding .bak files
+      await fs.mkdir(tempProject, { recursive: true });
+      await fs.mkdir(path.join(tempProject, 'data'), { recursive: true });
+      
+      const sourceDataDir = path.join(testProjectPath, 'data');
+      const targetDataDir = path.join(tempProject, 'data');
+      const files = await fs.readdir(sourceDataDir);
+      
+      for (const file of files) {
+        if (!file.endsWith('.bak')) {
+          await fs.copyFile(
+            path.join(sourceDataDir, file),
+            path.join(targetDataDir, file)
+          );
+        }
+      }
+      
+      // Copy other directories/files if needed
+      const otherItems = await fs.readdir(testProjectPath);
+      for (const item of otherItems) {
+        if (item !== 'data') {
+          const sourcePath = path.join(testProjectPath, item);
+          const targetPath = path.join(tempProject, item);
+          const stat = await fs.stat(sourcePath);
+          if (stat.isDirectory()) {
+            await fs.cp(sourcePath, targetPath, { recursive: true });
+          } else {
+            await fs.copyFile(sourcePath, targetPath);
+          }
+        }
+      }
 
       try {
         const originalData = await loadMapData(tempProject, 1);

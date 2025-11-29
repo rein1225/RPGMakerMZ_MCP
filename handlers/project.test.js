@@ -72,7 +72,7 @@ describe('project', () => {
         it('should throw error for non-existent file', async () => {
             await expect(readDataFile({
                 projectPath: testProjectPath,
-                filename: 'NonExistent.json'
+                filename: 'ReallyNonExistentFile.json'
             })).rejects.toThrow();
         });
     });

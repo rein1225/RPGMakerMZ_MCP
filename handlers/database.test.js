@@ -14,7 +14,38 @@ let testProjectPath;
 async function setupTempProject() {
   tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'mz-project-'));
   testProjectPath = path.join(tempRoot, 'project');
-  await fs.cp(sourceProjectPath, testProjectPath, { recursive: true });
+  
+  // Copy files individually, excluding .bak files
+  await fs.mkdir(testProjectPath, { recursive: true });
+  await fs.mkdir(path.join(testProjectPath, 'data'), { recursive: true });
+  
+  const sourceDataDir = path.join(sourceProjectPath, 'data');
+  const targetDataDir = path.join(testProjectPath, 'data');
+  const files = await fs.readdir(sourceDataDir);
+  
+  for (const file of files) {
+    if (!file.endsWith('.bak')) {
+      await fs.copyFile(
+        path.join(sourceDataDir, file),
+        path.join(targetDataDir, file)
+      );
+    }
+  }
+  
+  // Copy other directories/files if needed
+  const otherItems = await fs.readdir(sourceProjectPath);
+  for (const item of otherItems) {
+    if (item !== 'data') {
+      const sourcePath = path.join(sourceProjectPath, item);
+      const targetPath = path.join(testProjectPath, item);
+      const stat = await fs.stat(sourcePath);
+      if (stat.isDirectory()) {
+        await fs.cp(sourcePath, targetPath, { recursive: true });
+      } else {
+        await fs.copyFile(sourcePath, targetPath);
+      }
+    }
+  }
 }
 
 async function cleanupTempProject() {

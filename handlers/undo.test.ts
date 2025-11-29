@@ -1,49 +1,82 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'fs/promises';
 import path from 'path';
+import os from 'os';
 import { fileURLToPath } from 'url';
 import { undoLastChange, listBackups } from './undo.js';
 import { Errors } from '../utils/errors.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const testProjectPath = path.join(__dirname, '../test_project');
+const sourceProjectPath = path.join(__dirname, '../test_project');
+
+let tempRoot: string | undefined;
+let testProjectPath: string | undefined;
+
+async function setupTempProject() {
+    tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'mz-undo-'));
+    testProjectPath = path.join(tempRoot, 'project');
+    
+    // Copy files individually, excluding .bak files
+    await fs.mkdir(testProjectPath, { recursive: true });
+    await fs.mkdir(path.join(testProjectPath, 'data'), { recursive: true });
+    
+    const sourceDataDir = path.join(sourceProjectPath, 'data');
+    const targetDataDir = path.join(testProjectPath, 'data');
+    const files = await fs.readdir(sourceDataDir);
+    
+    for (const file of files) {
+        if (!file.endsWith('.bak')) {
+            const sourceFile = path.join(sourceDataDir, file);
+            try {
+                const stat = await fs.stat(sourceFile);
+                if (stat.isFile()) {
+                    await fs.copyFile(
+                        sourceFile,
+                        path.join(targetDataDir, file)
+                    );
+                }
+            } catch {
+                // Skip if file doesn't exist or is not a file
+            }
+        }
+    }
+    
+    // Copy other directories/files if needed
+    const otherItems = await fs.readdir(sourceProjectPath);
+    for (const item of otherItems) {
+        if (item !== 'data') {
+            const sourcePath = path.join(sourceProjectPath, item);
+            const targetPath = path.join(testProjectPath, item);
+            const stat = await fs.stat(sourcePath);
+            if (stat.isDirectory()) {
+                await fs.cp(sourcePath, targetPath, { recursive: true });
+            } else {
+                await fs.copyFile(sourcePath, targetPath);
+            }
+        }
+    }
+}
+
+async function cleanupTempProject() {
+    if (tempRoot) {
+        await fs.rm(tempRoot, { recursive: true, force: true }).catch(() => {});
+        tempRoot = undefined;
+        testProjectPath = undefined;
+    }
+}
 
 describe('undo', () => {
     beforeEach(async () => {
-        // Ensure test project exists
-        try {
-            await fs.access(testProjectPath);
-        } catch {
-            // Create minimal test project structure
-            await fs.mkdir(testProjectPath, { recursive: true });
-            await fs.mkdir(path.join(testProjectPath, 'data'), { recursive: true });
-            await fs.writeFile(
-                path.join(testProjectPath, 'game.rmmzproject'),
-                '{}',
-                'utf-8'
-            );
-        }
+        await setupTempProject();
     });
 
     afterEach(async () => {
-        // Cleanup: Remove backup files created during tests
-        try {
-            const dataDir = path.join(testProjectPath, 'data');
-            const files = await fs.readdir(dataDir);
-            for (const file of files) {
-                if (file.endsWith('.bak')) {
-                    await fs.unlink(path.join(dataDir, file)).catch(() => {
-                        // Ignore cleanup errors
-                    });
-                }
-            }
-        } catch {
-            // Ignore cleanup errors
-        }
+        await cleanupTempProject();
     });
 
     describe('undoLastChange', () => {
         it('should restore file from latest backup', async () => {
+            if (!testProjectPath) throw new Error('testProjectPath not set');
             const filename = 'TestActors.json';
             const filePath = path.join(testProjectPath, 'data', filename);
             const originalContent = JSON.stringify([{ id: 1, name: 'Original' }], null, 2);
@@ -74,6 +107,7 @@ describe('undo', () => {
         });
 
         it('should throw error if no backup found', async () => {
+            if (!testProjectPath) throw new Error('testProjectPath not set');
             const filename = 'NonExistent.json';
             const filePath = path.join(testProjectPath, 'data', filename);
             
@@ -89,6 +123,7 @@ describe('undo', () => {
         });
 
         it('should restore most recently modified file if filename not specified', async () => {
+            if (!testProjectPath) throw new Error('testProjectPath not set');
             const file1 = path.join(testProjectPath, 'data', 'File1.json');
             const file2 = path.join(testProjectPath, 'data', 'File2.json');
 
@@ -117,10 +152,11 @@ describe('undo', () => {
             
             // Verify file2 was restored (most recent)
             const restoredContent = await fs.readFile(file2, 'utf-8');
-            expect(restoredContent).toContain('"modified": true');
+            expect(restoredContent).toContain('"modified":true');
         });
 
         it('should throw error for invalid filename', async () => {
+            if (!testProjectPath) throw new Error('testProjectPath not set');
             await expect(
                 undoLastChange({
                     projectPath: testProjectPath,
@@ -132,17 +168,20 @@ describe('undo', () => {
 
     describe('listBackups', () => {
         it('should list all backups for a file', async () => {
+            if (!testProjectPath) throw new Error('testProjectPath not set');
             const filename = 'TestFile.json';
             const filePath = path.join(testProjectPath, 'data', filename);
 
             // Create file and multiple backups
             await fs.writeFile(filePath, '{}', 'utf-8');
             
-            const backup1 = `${filePath}.${Date.now()}.bak`;
+            const timestamp1 = Date.now();
+            const backup1 = `${filePath}.${timestamp1}.bak`;
             await fs.copyFile(filePath, backup1);
-            await new Promise(resolve => setTimeout(resolve, 10));
+            await new Promise(resolve => setTimeout(resolve, 100));
             
-            const backup2 = `${filePath}.${Date.now()}.bak`;
+            const timestamp2 = Date.now();
+            const backup2 = `${filePath}.${timestamp2}.bak`;
             await fs.copyFile(filePath, backup2);
 
             const result = await listBackups({
@@ -157,6 +196,7 @@ describe('undo', () => {
         });
 
         it('should list backups for all files if filename not specified', async () => {
+            if (!testProjectPath) throw new Error('testProjectPath not set');
             const file1 = path.join(testProjectPath, 'data', 'File1.json');
             const file2 = path.join(testProjectPath, 'data', 'File2.json');
 
@@ -177,6 +217,7 @@ describe('undo', () => {
         });
 
         it('should return empty array if no backups found', async () => {
+            if (!testProjectPath) throw new Error('testProjectPath not set');
             const filename = 'NoBackupFile.json';
             const filePath = path.join(testProjectPath, 'data', filename);
             await fs.writeFile(filePath, '{}', 'utf-8');

@@ -72,6 +72,13 @@ export async function readDataFile(args: DataFileArgs): Promise<HandlerResponse>
     const filePath = path.join(projectPath, "data", normalizedFilename);
     const resolvedPath = path.resolve(filePath);
     
+    // Check if file exists first
+    try {
+        await fs.access(resolvedPath);
+    } catch {
+        throw new Error(`File not found: ${filename}`);
+    }
+    
     // Resolve real path to prevent symlink attacks
     const realDataDir = await fs.realpath(path.resolve(projectPath, "data"));
     const realFilePath = await fs.realpath(resolvedPath);
