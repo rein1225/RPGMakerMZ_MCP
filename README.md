@@ -85,7 +85,7 @@ npm install -g @rein634/rpg-maker-mz-mcp
     "rpg-maker-mz": {
       "command": "node",
       "args": [
-        "C:/Users/1225s/AppData/Roaming/npm/node_modules/@rein634/rpg-maker-mz-mcp/dist/index.js"
+        "C:/Users/YOUR_USERNAME/AppData/Roaming/npm/node_modules/@rein634/rpg-maker-mz-mcp/dist/index.js"
       ]
     }
   }
@@ -93,7 +93,7 @@ npm install -g @rein634/rpg-maker-mz-mcp
 ```
 
 > ⚠️ **重要**: 
-> - `C:/Users/1225s/AppData/Roaming/npm/node_modules/...` の部分を、**あなたの環境での実際のパス**に置き換えてください
+> - `C:/Users/YOUR_USERNAME/AppData/Roaming/npm/node_modules/...` の部分を、**あなたの環境での実際のパス**に置き換えてください（`YOUR_USERNAME`をあなたのWindowsユーザー名に変更）
 > - Windowsでは`C:/`のようにスラッシュ（`/`）を使用し、バックスラッシュ（`\`）は使用しないでください
 > - パスは環境変数 `%APPDATA%\npm\node_modules\@rein634\rpg-maker-mz-mcp\dist\index.js` を展開した形になります
 
