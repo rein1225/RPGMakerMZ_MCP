@@ -7,10 +7,13 @@
     "declaration": false,
     "declarationMap": false,
     "emitDeclarationOnly": false,
-    "allowJs": false
+    "allowJs": false,
+    "lib": ["ES2022", "DOM"],
+    "typeRoots": ["./node_modules/@types", "./types"]
   },
   "include": [
-    "handlers/*.ts"
+    "handlers/*.ts",
+    "types/**/*.d.ts"
   ],
   "exclude": [
     "node_modules",

@@ -1,16 +1,27 @@
-import puppeteer from "puppeteer";
-import { spawn } from "child_process";
+import puppeteer, { Browser, Page } from "puppeteer";
+import { spawn, ChildProcess } from "child_process";
 import fs from "fs/promises";
 import path from "path";
 import screenshot from "screenshot-desktop";
-import { fileURLToPath } from "url";
 import { validateProjectPath, sleep } from "../utils/validation.js";
 import { Logger } from "../utils/logger.js";
 import { DEFAULTS } from "../utils/constants.js";
+import { HandlerResponse } from "../types/index.js";
+import { Server } from "http";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+type ProjectArgs = { projectPath: string };
+type RunPlaytestArgs = ProjectArgs & {
+    duration?: number;
+    autoClose?: boolean;
+    debugPort?: number;
+    startNewGame?: boolean;
+};
+type InspectGameStateArgs = { port?: number; script: string };
 
-export async function runPlaytest(args) {
+type HandlerContent = { type: string; text?: string; data?: string };
+type HandlerResult = { content: HandlerContent[]; isError?: boolean };
+
+export async function runPlaytest(args: RunPlaytestArgs): Promise<HandlerResult> {
     const {
         projectPath,
         duration = DEFAULTS.TIMEOUT,
@@ -31,10 +42,10 @@ export async function runPlaytest(args) {
         useBrowserFallback = true;
     }
 
-    let gameProcess;
-    let server;
-    let browser;
-    let result = { content: [] };
+    let gameProcess: ChildProcess | undefined;
+    let server: Server | undefined;
+    let browser: Browser | undefined;
+    let result: HandlerResult = { content: [] };
     let capturedViaPuppeteer = false;
     const startTime = Date.now();
     const maxWaitTime = Math.max(duration + 10000, DEFAULTS.MAX_WAIT_TIME);
@@ -55,13 +66,13 @@ export async function runPlaytest(args) {
                 });
             });
 
-            await new Promise((resolve, reject) => {
-                server.once('error', (err) => {
+            await new Promise<void>((resolve, reject) => {
+                server!.once('error', (err) => {
                     reject(err);
                 });
-                server.listen(0, () => resolve());
+                server!.listen(0, () => resolve());
             });
-            const port = server.address().port;
+            const port = (server!.address() as { port: number }).port;
             await Logger.info(`Local server running on port ${port}`);
             await Logger.debug(`Local server running on port ${port}`);
 
@@ -128,13 +139,14 @@ export async function runPlaytest(args) {
                     const base64Img = imgBuffer.toString('base64');
                     result.content.push({ type: "image/png", data: base64Img });
                     result.content.push({ type: "text", text: "Game launched and screenshot taken (Desktop Fallback)." });
-                } catch (e) {
-                    result.content.push({ type: "text", text: `Game launched but failed to take screenshot: ${e.message}` });
+                } catch (e: unknown) {
+                    const err = e as Error;
+                    result.content.push({ type: "text", text: `Game launched but failed to take screenshot: ${err.message}` });
                     result.isError = true;
                 }
             }
         }
-    } catch (e) {
+    } catch (e: unknown) {
         await Logger.error("Puppeteer connection logic error", e);
     } finally {
         // Cleanup: Different strategies for fallback vs Game.exe mode
@@ -146,15 +158,16 @@ export async function runPlaytest(args) {
             if (browser) await browser.disconnect();
             if (autoClose && gameProcess) {
                 try {
-                    if (process.platform === 'win32') {
-                        spawn("taskkill", ["/pid", gameProcess.pid, "/f", "/t"]);
+                    if (process.platform === 'win32' && gameProcess.pid) {
+                        spawn("taskkill", ["/pid", gameProcess.pid.toString(), "/f", "/t"]);
                         result.content.push({ type: "text", text: "Game process terminated (autoClose: true)." });
                     } else {
                         gameProcess.kill();
                         result.content.push({ type: "text", text: "Game process kill signal sent." });
                     }
-                } catch (e) {
-                    result.content.push({ type: "text", text: `Failed to close game process: ${e.message}` });
+                } catch (e: unknown) {
+                    const err = e as Error;
+                    result.content.push({ type: "text", text: `Failed to close game process: ${err.message}` });
                 }
             }
         }
@@ -163,8 +176,13 @@ export async function runPlaytest(args) {
     return result;
 }
 
-async function captureGameScreenshot(page, startNewGame, duration, startTime) {
-    const content = [];
+async function captureGameScreenshot(
+    page: Page,
+    startNewGame: boolean,
+    duration: number,
+    startTime: number
+): Promise<HandlerContent[]> {
+    const content: HandlerContent[] = [];
     try {
         await page.waitForSelector('#gameCanvas', { timeout: duration });
         await Logger.debug("Found #gameCanvas.");
@@ -173,27 +191,34 @@ async function captureGameScreenshot(page, startNewGame, duration, startTime) {
             await Logger.debug("Attempting to start new game...");
             try {
                 await page.waitForFunction(() => {
-                    return window.SceneManager && window.SceneManager._scene && window.SceneManager._scene.constructor.name === 'Scene_Title';
+                    const win = globalThis as any;
+                    return win.SceneManager && win.SceneManager._scene && win.SceneManager._scene.constructor.name === 'Scene_Title';
                 }, { timeout: 10000 });
                 await Logger.debug("Scene_Title detected.");
-                await page.evaluate(() => { DataManager.setupNewGame(); SceneManager.goto(Scene_Map); });
+                await page.evaluate(() => { 
+                    const win = globalThis as any;
+                    win.DataManager.setupNewGame(); 
+                    win.SceneManager.goto(win.Scene_Map); 
+                });
                 await Logger.debug("New Game command sent.");
-            } catch (e) {
-                await Logger.debug(`Failed to start new game: ${e.message}`);
+            } catch (e: unknown) {
+                const err = e as Error;
+                await Logger.debug(`Failed to start new game: ${err.message}`);
             }
         }
 
         const remainingTime = Math.max(2000, duration - (Date.now() - startTime));
         try {
-            await page.waitForFunction((targetScene) => {
-                if (!window.SceneManager || !window.SceneManager._scene) return false;
-                const sceneName = window.SceneManager._scene.constructor.name;
+            await page.waitForFunction((targetScene: string | null) => {
+                const win = globalThis as any;
+                if (!win.SceneManager || !win.SceneManager._scene) return false;
+                const sceneName = win.SceneManager._scene.constructor.name;
                 if (sceneName === 'Scene_Boot') return false;
                 if (targetScene && sceneName !== targetScene) return false;
                 return true;
             }, { timeout: remainingTime }, startNewGame ? 'Scene_Map' : null);
             await Logger.debug("Scene ready check passed.");
-        } catch (e) {
+        } catch (e: unknown) {
             await Logger.debug("Scene ready check timed out.");
         }
 
@@ -201,27 +226,28 @@ async function captureGameScreenshot(page, startNewGame, duration, startTime) {
 
         try {
             const canvasDataUrl = await page.evaluate(() => {
-                const canvas = document.querySelector('#gameCanvas');
+                const canvas = (globalThis as any).document.querySelector('#gameCanvas');
                 return canvas.toDataURL('image/png');
             });
             const base64Data = canvasDataUrl.replace(/^data:image\/png;base64,/, "");
             content.push({ type: "image/png", data: base64Data });
             content.push({ type: "text", text: `Game launched and screenshot taken via Canvas.toDataURL. (New Game: ${startNewGame})` });
             await Logger.debug("Screenshot taken via Canvas.toDataURL.");
-        } catch (e) {
-            await Logger.debug(`Canvas toDataURL failed: ${e.message}`);
-            const base64Img = await page.screenshot({ encoding: 'base64' });
+        } catch (e: unknown) {
+            const err = e as Error;
+            await Logger.debug(`Canvas toDataURL failed: ${err.message}`);
+            const base64Img = await page.screenshot({ encoding: 'base64' }) as string;
             content.push({ type: "image/png", data: base64Img });
             content.push({ type: "text", text: `Game launched and screenshot taken via Puppeteer page.screenshot. (New Game: ${startNewGame})` });
             await Logger.debug("Screenshot taken via page.screenshot.");
         }
-    } catch (e) {
+    } catch (e: unknown) {
         await Logger.error("Puppeteer operation failed", e);
     }
     return content;
 }
 
-export async function inspectGameState(args) {
+export async function inspectGameState(args: InspectGameStateArgs): Promise<HandlerResponse> {
     const { port = DEFAULTS.PORT, script } = args;
 
     // Security Warning: Evaluating arbitrary code is dangerous.
@@ -251,7 +277,8 @@ export async function inspectGameState(args) {
                 { type: "text", text: JSON.stringify(evalResult, null, 2) }
             ]
         };
-    } catch (error) {
-        throw new Error(`Failed to inspect game state: ${error.message}`);
+    } catch (error: unknown) {
+        const err = error as Error;
+        throw new Error(`Failed to inspect game state: ${err.message}`);
     }
 }
