@@ -57,13 +57,21 @@ export async function runPlaytest(args: RunPlaytestArgs): Promise<HandlerResult>
             const serveHandlerModule = await import('serve-handler');
             const serveHandler = serveHandlerModule.default || serveHandlerModule;
 
-            server = http.createServer((request, response) => {
-                return serveHandler(request, response, {
-                    public: projectPath,
-                    headers: [
-                        { source: "**/*", headers: [{ key: "Access-Control-Allow-Origin", value: "*" }] }
-                    ]
-                });
+            server = http.createServer(async (request, response) => {
+                try {
+                    return await serveHandler(request, response, {
+                        public: projectPath,
+                        headers: [
+                            { source: "**/*", headers: [{ key: "Access-Control-Allow-Origin", value: "*" }] }
+                        ]
+                    });
+                } catch (e: unknown) {
+                    await Logger.error("HTTP server request handler error", e);
+                    if (!response.headersSent) {
+                        response.statusCode = 500;
+                        response.end("Internal Server Error");
+                    }
+                }
             });
 
             await new Promise<void>((resolve, reject) => {
@@ -148,28 +156,71 @@ export async function runPlaytest(args: RunPlaytestArgs): Promise<HandlerResult>
         }
     } catch (e: unknown) {
         await Logger.error("Puppeteer connection logic error", e);
+        result.isError = true;
+        result.content.push({ type: "text", text: `Error during playtest: ${e instanceof Error ? e.message : String(e)}` });
     } finally {
         // Cleanup: Different strategies for fallback vs Game.exe mode
+        // Ensure all resources are properly cleaned up even if errors occur
+        const cleanupErrors: string[] = [];
+
         if (useBrowserFallback) {
             // Always close browser in fallback mode
-            if (browser) await browser.close();
-            if (server) server.close();
+            if (browser) {
+                try {
+                    await browser.close();
+                } catch (e: unknown) {
+                    const err = e instanceof Error ? e.message : String(e);
+                    cleanupErrors.push(`Failed to close browser: ${err}`);
+                    await Logger.error("Failed to close browser during cleanup", e);
+                }
+            }
+            if (server) {
+                try {
+                    await new Promise<void>((resolve, reject) => {
+                        server!.close((err) => {
+                            if (err) reject(err);
+                            else resolve();
+                        });
+                    });
+                } catch (e: unknown) {
+                    const err = e instanceof Error ? e.message : String(e);
+                    cleanupErrors.push(`Failed to close server: ${err}`);
+                    await Logger.error("Failed to close server during cleanup", e);
+                }
+            }
         } else {
-            if (browser) await browser.disconnect();
+            // Game.exe mode cleanup
+            if (browser) {
+                try {
+                    await browser.disconnect();
+                } catch (e: unknown) {
+                    const err = e instanceof Error ? e.message : String(e);
+                    cleanupErrors.push(`Failed to disconnect browser: ${err}`);
+                    await Logger.error("Failed to disconnect browser during cleanup", e);
+                }
+            }
             if (autoClose && gameProcess) {
                 try {
                     if (process.platform === 'win32' && gameProcess.pid) {
-                        spawn("taskkill", ["/pid", gameProcess.pid.toString(), "/f", "/t"]);
+                        const killProcess = spawn("taskkill", ["/pid", gameProcess.pid.toString(), "/f", "/t"], { stdio: 'ignore' });
+                        killProcess.unref();
                         result.content.push({ type: "text", text: "Game process terminated (autoClose: true)." });
-                    } else {
+                    } else if (gameProcess.pid) {
                         gameProcess.kill();
                         result.content.push({ type: "text", text: "Game process kill signal sent." });
                     }
                 } catch (e: unknown) {
-                    const err = e as Error;
-                    result.content.push({ type: "text", text: `Failed to close game process: ${err.message}` });
+                    const err = e instanceof Error ? e.message : String(e);
+                    cleanupErrors.push(`Failed to close game process: ${err}`);
+                    await Logger.error("Failed to close game process during cleanup", e);
+                    result.content.push({ type: "text", text: `Failed to close game process: ${err}` });
                 }
             }
+        }
+
+        // Log any cleanup errors
+        if (cleanupErrors.length > 0) {
+            await Logger.warn(`Cleanup errors occurred: ${cleanupErrors.join('; ')}`);
         }
     }
 
@@ -247,15 +298,116 @@ async function captureGameScreenshot(
     return content;
 }
 
+/**
+ * Whitelist of allowed property access patterns for game state inspection
+ * Only these patterns are allowed to prevent arbitrary code execution
+ */
+const ALLOWED_ACCESS_PATTERNS = [
+    /^\$gameVariables\.value\(\d+\)$/,
+    /^\$gameSwitches\.value\(\d+\)$/,
+    /^\$gameActors\.actor\(\d+\)$/,
+    /^\$gameParty\.members\(\)$/,
+    /^\$gameParty\.gold\(\)$/,
+    /^\$gameParty\.items\(\)$/,
+    /^\$gameParty\.weapons\(\)$/,
+    /^\$gameParty\.armors\(\)$/,
+    /^\$gameMap\.mapId\(\)$/,
+    /^\$gamePlayer\.x\(\)$/,
+    /^\$gamePlayer\.y\(\)$/,
+    /^\$gamePlayer\.screenX\(\)$/,
+    /^\$gamePlayer\.screenY\(\)$/,
+    /^SceneManager\._scene$/,
+    /^SceneManager\._scene\.constructor\.name$/,
+    /^DataManager\._globalId$/,
+    /^Graphics\.width$/,
+    /^Graphics\.height$/,
+] as const;
+
+/**
+ * Validates if a script matches allowed access patterns
+ */
+function isScriptAllowed(script: string): boolean {
+    const trimmed = script.trim();
+    return ALLOWED_ACCESS_PATTERNS.some(pattern => pattern.test(trimmed));
+}
+
+/**
+ * Safe evaluator that only allows whitelisted property access
+ */
+function safeEvaluate(script: string): unknown {
+    if (!isScriptAllowed(script)) {
+        throw new Error(`Script not allowed: ${script}. Only whitelisted RPG Maker MZ game state access patterns are permitted.`);
+    }
+
+    // Use Function constructor instead of eval for slightly better sandboxing
+    // Still executes in page context, but prevents direct eval scope access
+    try {
+        const func = new Function('return ' + script);
+        return func();
+    } catch (e) {
+        // If Function constructor fails, try direct property access parsing
+        // This handles cases like $gameVariables.value(1) more safely
+        const win = globalThis as any;
+        
+        // Parse simple property access patterns
+        if (script.startsWith('$gameVariables.value(')) {
+            const match = script.match(/\$gameVariables\.value\((\d+)\)/);
+            if (match && win.$gameVariables) {
+                return win.$gameVariables.value(parseInt(match[1], 10));
+            }
+        }
+        if (script.startsWith('$gameSwitches.value(')) {
+            const match = script.match(/\$gameSwitches\.value\((\d+)\)/);
+            if (match && win.$gameSwitches) {
+                return win.$gameSwitches.value(parseInt(match[1], 10));
+            }
+        }
+        if (script.startsWith('$gameActors.actor(')) {
+            const match = script.match(/\$gameActors\.actor\((\d+)\)/);
+            if (match && win.$gameActors) {
+                return win.$gameActors.actor(parseInt(match[1], 10));
+            }
+        }
+        if (script === '$gameParty.members()' && win.$gameParty) {
+            return win.$gameParty.members();
+        }
+        if (script === '$gameParty.gold()' && win.$gameParty) {
+            return win.$gameParty.gold();
+        }
+        if (script === '$gameMap.mapId()' && win.$gameMap) {
+            return win.$gameMap.mapId();
+        }
+        if (script === '$gamePlayer.x()' && win.$gamePlayer) {
+            return win.$gamePlayer.x();
+        }
+        if (script === '$gamePlayer.y()' && win.$gamePlayer) {
+            return win.$gamePlayer.y();
+        }
+        if (script === 'SceneManager._scene' && win.SceneManager) {
+            return win.SceneManager._scene;
+        }
+        if (script === 'SceneManager._scene.constructor.name' && win.SceneManager?._scene) {
+            return win.SceneManager._scene.constructor.name;
+        }
+        
+        throw new Error(`Failed to evaluate script: ${script}. Error: ${e instanceof Error ? e.message : String(e)}`);
+    }
+}
+
 export async function inspectGameState(args: InspectGameStateArgs): Promise<HandlerResponse> {
     const { port = DEFAULTS.PORT, script } = args;
 
-    // Security Warning: Evaluating arbitrary code is dangerous.
-    // Ensure this tool is only used in a trusted local environment.
-    await Logger.warn(`Executing arbitrary code via inspect_game_state: ${script}`);
+    // Security: Validate script against whitelist before execution
+    if (!isScriptAllowed(script)) {
+        await Logger.error(`Security violation: Attempted to execute non-whitelisted script`, new Error(script));
+        throw new Error(`Script not allowed: ${script}. Only whitelisted RPG Maker MZ game state access patterns are permitted.`);
+    }
 
+    await Logger.info(`Executing whitelisted game state access: ${script}`);
+
+    let browser: Browser | undefined;
     try {
-        const browser = await puppeteer.connect({
+        browser = await puppeteer.connect({
             browserURL: `http://127.0.0.1:${port}`,
             defaultViewport: null
         });
@@ -266,11 +418,75 @@ export async function inspectGameState(args: InspectGameStateArgs): Promise<Hand
         }
 
         const page = pages[0];
-        const evalResult = await page.evaluate((code) => {
-            return eval(code);
-        }, script);
+        // Inject safe evaluator function into page context
+        const evalResult = await page.evaluate((code, allowedPatterns) => {
+            // Recreate safeEvaluate in page context
+            function isScriptAllowed(script: string): boolean {
+                const trimmed = script.trim();
+                return allowedPatterns.some((pattern: string) => {
+                    const regex = new RegExp(pattern);
+                    return regex.test(trimmed);
+                });
+            }
 
-        await browser.disconnect();
+            function safeEvaluate(script: string): unknown {
+                if (!isScriptAllowed(script)) {
+                    throw new Error(`Script not allowed: ${script}. Only whitelisted RPG Maker MZ game state access patterns are permitted.`);
+                }
+
+                try {
+                    const func = new Function('return ' + script);
+                    return func();
+                } catch (e) {
+                    const win = globalThis as any;
+                    
+                    // Parse simple property access patterns
+                    if (script.startsWith('$gameVariables.value(')) {
+                        const match = script.match(/\$gameVariables\.value\((\d+)\)/);
+                        if (match && win.$gameVariables) {
+                            return win.$gameVariables.value(parseInt(match[1], 10));
+                        }
+                    }
+                    if (script.startsWith('$gameSwitches.value(')) {
+                        const match = script.match(/\$gameSwitches\.value\((\d+)\)/);
+                        if (match && win.$gameSwitches) {
+                            return win.$gameSwitches.value(parseInt(match[1], 10));
+                        }
+                    }
+                    if (script.startsWith('$gameActors.actor(')) {
+                        const match = script.match(/\$gameActors\.actor\((\d+)\)/);
+                        if (match && win.$gameActors) {
+                            return win.$gameActors.actor(parseInt(match[1], 10));
+                        }
+                    }
+                    if (script === '$gameParty.members()' && win.$gameParty) {
+                        return win.$gameParty.members();
+                    }
+                    if (script === '$gameParty.gold()' && win.$gameParty) {
+                        return win.$gameParty.gold();
+                    }
+                    if (script === '$gameMap.mapId()' && win.$gameMap) {
+                        return win.$gameMap.mapId();
+                    }
+                    if (script === '$gamePlayer.x()' && win.$gamePlayer) {
+                        return win.$gamePlayer.x();
+                    }
+                    if (script === '$gamePlayer.y()' && win.$gamePlayer) {
+                        return win.$gamePlayer.y();
+                    }
+                    if (script === 'SceneManager._scene' && win.SceneManager) {
+                        return win.SceneManager._scene;
+                    }
+                    if (script === 'SceneManager._scene.constructor.name' && win.SceneManager?._scene) {
+                        return win.SceneManager._scene.constructor.name;
+                    }
+                    
+                    throw new Error(`Failed to evaluate script: ${script}. Error: ${e instanceof Error ? e.message : String(e)}`);
+                }
+            }
+
+            return safeEvaluate(code);
+        }, script, ALLOWED_ACCESS_PATTERNS.map(p => p.source));
 
         return {
             content: [
@@ -279,6 +495,15 @@ export async function inspectGameState(args: InspectGameStateArgs): Promise<Hand
         };
     } catch (error: unknown) {
         const err = error as Error;
+        await Logger.error(`Failed to inspect game state`, err);
         throw new Error(`Failed to inspect game state: ${err.message}`);
+    } finally {
+        if (browser) {
+            try {
+                await browser.disconnect();
+            } catch (e) {
+                await Logger.error(`Failed to disconnect browser`, e);
+            }
+        }
     }
 }

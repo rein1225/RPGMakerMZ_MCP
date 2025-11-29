@@ -61,15 +61,25 @@ export async function readDataFile(args: DataFileArgs): Promise<HandlerResponse>
         throw new Error("Only .json files can be read");
     }
 
-    const filePath = path.join(projectPath, "data", filename);
-    const resolvedPath = path.resolve(filePath);
-    const dataDir = path.resolve(projectPath, "data");
-
-    if (!resolvedPath.startsWith(dataDir)) {
+    // Normalize path to prevent directory traversal
+    const normalizedFilename = path.normalize(filename).replace(/\\/g, "/");
+    if (normalizedFilename.includes("..") || path.isAbsolute(normalizedFilename)) {
         throw Errors.assetPathInvalid(filename);
     }
 
-    const content = await fs.readFile(resolvedPath, "utf-8");
+    const filePath = path.join(projectPath, "data", normalizedFilename);
+    const resolvedPath = path.resolve(filePath);
+    
+    // Resolve real path to prevent symlink attacks
+    const realDataDir = await fs.realpath(path.resolve(projectPath, "data"));
+    const realFilePath = await fs.realpath(resolvedPath);
+
+    // Verify resolved path is within data directory
+    if (!realFilePath.startsWith(realDataDir + path.sep) && realFilePath !== realDataDir) {
+        throw Errors.assetPathInvalid(filename);
+    }
+
+    const content = await fs.readFile(realFilePath, "utf-8");
 
     return {
         content: [
@@ -91,11 +101,21 @@ export async function writeDataFile(args: WriteDataFileArgs): Promise<HandlerRes
 
     JSON.parse(content);
 
-    const filePath = path.join(projectPath, "data", filename);
-    const resolvedPath = path.resolve(filePath);
-    const dataDir = path.resolve(projectPath, "data");
+    // Normalize path to prevent directory traversal
+    const normalizedFilename = path.normalize(filename).replace(/\\/g, "/");
+    if (normalizedFilename.includes("..") || path.isAbsolute(normalizedFilename)) {
+        throw Errors.assetPathInvalid(filename);
+    }
 
-    if (!resolvedPath.startsWith(dataDir)) {
+    const filePath = path.join(projectPath, "data", normalizedFilename);
+    const resolvedPath = path.resolve(filePath);
+    
+    // Resolve real path to prevent symlink attacks
+    const realDataDir = await fs.realpath(path.resolve(projectPath, "data"));
+    const realFilePath = await fs.realpath(path.dirname(resolvedPath));
+    
+    // Verify resolved directory is within data directory
+    if (!realFilePath.startsWith(realDataDir + path.sep) && realFilePath !== realDataDir) {
         throw Errors.assetPathInvalid(filename);
     }
 

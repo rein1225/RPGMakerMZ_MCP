@@ -5,6 +5,8 @@ import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
 import * as fsSync from "fs";
+import { HandlerResponse } from "./types/index.js";
+import { Logger } from "./utils/logger.js";
 
 // Handlers
 import * as projectHandlers from "./handlers/project.js";
@@ -50,9 +52,62 @@ const server = new Server(
   }
 );
 
-// Tool mapping
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const toolMap: Record<string, (args: any) => Promise<any>> = {
+// Tool handler type definitions
+type ToolHandler<T = unknown> = (args: T) => Promise<HandlerResponse>;
+
+// Import handler argument types
+type ProjectArgs = { projectPath: string };
+type DataFileArgs = ProjectArgs & { filename: string };
+type WriteDataFileArgs = DataFileArgs & { content: string };
+type ListAssetsArgs = ProjectArgs & { assetType?: "img" | "audio" | "all" };
+type EventPageArgs = ProjectArgs & { mapId: number; eventId: string; pageIndex: number };
+type EventCommandArgs = EventPageArgs & { insertPosition: number };
+type AddDialogueArgs = EventCommandArgs & { text: string; face?: string; faceIndex?: number; background?: number; position?: number };
+type AddChoiceArgs = EventCommandArgs & { options: string[]; cancelType?: number };
+type ShowPictureArgs = EventCommandArgs & { pictureId?: number; pictureName: string; origin?: number; x?: number; y?: number };
+type AddConditionalBranchArgs = EventCommandArgs & { condition: { code: number; dataA: number; operation: number; dataB: number; class?: number }; includeElse?: boolean };
+type DeleteEventCommandArgs = EventPageArgs & { commandIndex: number };
+type UpdateEventCommandArgs = EventPageArgs & { commandIndex: number; newCommand: unknown };
+type SearchEventsArgs = ProjectArgs & { query: string };
+type WritePluginCodeArgs = ProjectArgs & { filename: string; code: string };
+type UpdatePluginsConfigArgs = ProjectArgs & { plugins: unknown[] };
+type AddActorArgs = ProjectArgs & { name: string; classId?: number; initialLevel?: number; maxLevel?: number };
+type AddItemArgs = ProjectArgs & { name: string; price?: number; consumable?: boolean; scope?: number; occasion?: number };
+type AddSkillArgs = ProjectArgs & { name: string; mpCost?: number; tpCost?: number; scope?: number; occasion?: number };
+type DrawMapTileArgs = ProjectArgs & { mapId: number; x: number; y: number; layer: number; tileId: number };
+type CreateMapArgs = ProjectArgs & { mapName: string; width?: number; height?: number; tilesetId?: number };
+type RunPlaytestArgs = ProjectArgs & { duration?: number; autoClose?: boolean; debugPort?: number; startNewGame?: boolean };
+type InspectGameStateArgs = { port?: number; script: string };
+
+// Tool mapping with strict types
+const toolMap: {
+  "get_project_info": ToolHandler<ProjectArgs>;
+  "list_data_files": ToolHandler<ProjectArgs>;
+  "read_data_file": ToolHandler<DataFileArgs>;
+  "write_data_file": ToolHandler<WriteDataFileArgs>;
+  "list_assets": ToolHandler<ListAssetsArgs>;
+  "write_plugin_code": ToolHandler<WritePluginCodeArgs>;
+  "get_plugins_config": ToolHandler<ProjectArgs>;
+  "update_plugins_config": ToolHandler<UpdatePluginsConfigArgs>;
+  "get_event_page": ToolHandler<EventPageArgs>;
+  "add_dialogue": ToolHandler<AddDialogueArgs>;
+  "add_choice": ToolHandler<AddChoiceArgs>;
+  "add_loop": ToolHandler<EventCommandArgs>;
+  "add_break_loop": ToolHandler<EventCommandArgs>;
+  "add_conditional_branch": ToolHandler<AddConditionalBranchArgs>;
+  "delete_event_command": ToolHandler<DeleteEventCommandArgs>;
+  "update_event_command": ToolHandler<UpdateEventCommandArgs>;
+  "search_events": ToolHandler<SearchEventsArgs>;
+  "add_actor": ToolHandler<AddActorArgs>;
+  "add_item": ToolHandler<AddItemArgs>;
+  "add_skill": ToolHandler<AddSkillArgs>;
+  "draw_map_tile": ToolHandler<DrawMapTileArgs>;
+  "create_map": ToolHandler<CreateMapArgs>;
+  "check_assets_integrity": ToolHandler<ProjectArgs>;
+  "show_picture": ToolHandler<ShowPictureArgs>;
+  "run_playtest": ToolHandler<RunPlaytestArgs>;
+  "inspect_game_state": ToolHandler<InspectGameStateArgs>;
+} = {
   // Project tools
   "get_project_info": projectHandlers.getProjectInfo,
   "list_data_files": projectHandlers.listDataFiles,
@@ -97,67 +152,81 @@ const toolMap: Record<string, (args: any) => Promise<any>> = {
 };
 
 server.setRequestHandler(ListResourcesRequestSchema, async () => {
-  return {
-    resources: [
-      {
-        uri: "mz://docs/event_commands",
-        name: "RPG Maker MZ Event Command Reference",
-        description: "Reference manual for MZ event commands with code to parameters mapping",
-        mimeType: "application/json"
-      }
-    ]
-  };
+  try {
+    return {
+      resources: [
+        {
+          uri: "mz://docs/event_commands",
+          name: "RPG Maker MZ Event Command Reference",
+          description: "Reference manual for MZ event commands with code to parameters mapping",
+          mimeType: "application/json"
+        }
+      ]
+    };
+  } catch (error: unknown) {
+    logCrash('ListResourcesRequestSchema handler error', error);
+    throw error;
+  }
 });
 
 server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
-    const { uri } = request.params;
+    try {
+        const { uri } = request.params;
 
-    if (uri === "mz://docs/event_commands") {
-        try {
-            const refPath = path.join(__dirname, "resources", "event_commands.json");
-            const content = await fs.readFile(refPath, "utf-8");
-            return {
-                contents: [
-                    {
-                        uri: uri,
-                        mimeType: "application/json",
-                        text: content
-                    }
-                ]
-            };
-        } catch (e: unknown) {
-            const err = e as Error;
-            throw new Error(`Failed to read event commands reference: ${err.message}`);
+        if (uri === "mz://docs/event_commands") {
+            try {
+                const refPath = path.join(__dirname, "resources", "event_commands.json");
+                const content = await fs.readFile(refPath, "utf-8");
+                return {
+                    contents: [
+                        {
+                            uri: uri,
+                            mimeType: "application/json",
+                            text: content
+                        }
+                    ]
+                };
+            } catch (e: unknown) {
+                const err = e as Error;
+                throw new Error(`Failed to read event commands reference: ${err.message}`);
+            }
         }
-    }
 
-    throw new Error(`Unknown resource: ${uri}`);
+        throw new Error(`Unknown resource: ${uri}`);
+    } catch (error: unknown) {
+        logCrash('ReadResourceRequestSchema handler error', error);
+        throw error;
+    }
 });
 
 // List Tools handler (imports tool schemas from ./toolSchemas.ts)
 import { toolSchemas } from "./toolSchemas.js";
 
 server.setRequestHandler(ListToolsRequestSchema, async () => {
-  return {
-    tools: toolSchemas
-  };
+  try {
+    return {
+      tools: toolSchemas
+    };
+  } catch (error: unknown) {
+    logCrash('ListToolsRequestSchema handler error', error);
+    throw error;
+  }
 });
 
 // Call Tool handler
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
-    console.error("Processing tool:", name);
+    await Logger.info(`Processing tool: ${name}`);
 
     try {
-        const handler = toolMap[name];
+        const handler = toolMap[name as keyof typeof toolMap];
         if (!handler) {
             throw new Error(`Unknown tool: ${name}`);
         }
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return await handler(args) as any;
+        return await handler(args);
     } catch (error: unknown) {
         const err = error as Error;
-        console.error(`Error executing tool ${name}:`, error);
+        await Logger.error(`Error executing tool ${name}`, err);
         return {
             content: [
                 {
@@ -173,4 +242,4 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 // Start server
 const transport = new StdioServerTransport();
 await server.connect(transport);
-console.error("RPG Maker MZ MCP Server running on stdio.");
+await Logger.info("RPG Maker MZ MCP Server running on stdio.");
