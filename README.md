@@ -74,33 +74,36 @@ Antigravityの設定ファイル（`mcp_config.json`）に以下を追加：
   "mcpServers": {
     "rpg-maker-mz": {
       "command": "npx",
-      "args": ["tsx", "c:/Users/1225s/Desktop/dev/RPGMakerMZ_MCP/index.ts"],
-      "cwd": "c:/Users/1225s/Desktop/dev/RPGMakerMZ_MCP"
+      "args": ["tsx", "C:/path/to/RPGMakerMZ_MCP/index.ts"],
+      "cwd": "C:/path/to/RPGMakerMZ_MCP"
     }
   }
 }
 ```
 
+> ⚠️ **重要**: パスは実際のプロジェクトパスに置き換えてください。Windowsでは`C:/`のようにスラッシュを使用し、バックスラッシュは使用しないでください。
+
 **方法2: ビルドしてから実行**
 
 ```bash
-npm run build:handlers
-npm run build:index
+npm run build
 ```
 
-その後、`index.js`を実行：
+その後、`dist/index.js`を実行：
 
 ```json
 {
   "mcpServers": {
     "rpg-maker-mz": {
       "command": "node",
-      "args": ["c:/Users/1225s/Desktop/dev/RPGMakerMZ_MCP/index.js"],
-      "cwd": "c:/Users/1225s/Desktop/dev/RPGMakerMZ_MCP"
+      "args": ["C:/path/to/RPGMakerMZ_MCP/dist/index.js"],
+      "cwd": "C:/path/to/RPGMakerMZ_MCP"
     }
   }
 }
 ```
+
+> ⚠️ **重要**: パスは実際のプロジェクトパスに置き換えてください。Windowsでは`C:/`のようにスラッシュを使用し、バックスラッシュは使用しないでください。
 
 ---
 
@@ -197,7 +200,7 @@ npm run build:index
 - `text` (必須): 表示テキスト
 - `face`, `faceIndex`, `background`, `position` (省略可)
 
-#### 12. `add_choice` - 選択肢の表示
+#### 13. `add_choice` - 選択肢の表示
 **説明:** イベントに選択肢を追加します。最大6つの選択肢を設定できます。
 **パラメータ:**
 - `projectPath` (必須): プロジェクトフォルダの絶対パス
@@ -208,57 +211,57 @@ npm run build:index
 - `options` (必須): 選択肢の文字列配列（最大6個）
 - `cancelType` (省略可): キャンセル時の動作（-1=キャンセル不可、0-5=選択肢に分岐、デフォルト: -1）
 
-#### 13. `add_loop` - ループ追加
+#### 14. `add_loop` - ループ追加
 **説明:** イベントコマンドのループ構造（Loop + Repeat Above）を追加します。
 **パラメータ:**
 - `projectPath`, `mapId`, `eventId`, `pageIndex`, `insertPosition` (必須)
 
-#### 14. `add_break_loop` - ループ中断
+#### 15. `add_break_loop` - ループ中断
 **説明:** ループを中断するコマンドを追加します。
 **パラメータ:**
 - `projectPath`, `mapId`, `eventId`, `pageIndex`, `insertPosition` (必須)
 
-#### 15. `add_conditional_branch` - 条件分岐追加
+#### 16. `add_conditional_branch` - 条件分岐追加
 **説明:** 条件分岐（If-Else-End）を追加します。
 **パラメータ:**
 - `projectPath`, `mapId`, `eventId`, `pageIndex`, `insertPosition` (必須)
 - `condition` (必須): 条件パラメータオブジェクト
 - `includeElse` (省略可): Else分岐を含めるか（デフォルト: true）
 
-#### 16. `delete_event_command` - イベントコマンド削除
+#### 17. `delete_event_command` - イベントコマンド削除
 **説明:** 指定したインデックスのイベントコマンドを削除します。
 **パラメータ:**
 - `projectPath`, `mapId`, `eventId`, `pageIndex`, `commandIndex` (必須)
 
-#### 17. `update_event_command` - イベントコマンド更新
+#### 18. `update_event_command` - イベントコマンド更新
 **説明:** 指定したインデックスのイベントコマンドを新しい内容で上書きします。
 **パラメータ:**
 - `projectPath`, `mapId`, `eventId`, `pageIndex`, `commandIndex`, `newCommand` (必須)
 
-#### 18. `add_actor` - アクター追加
+#### 19. `add_actor` - アクター追加
 **説明:** データベースに新しいアクターを追加します。
 **パラメータ:**
 - `projectPath`, `name` (必須)
 - `classId`, `initialLevel`, `maxLevel` (省略可)
 
-#### 19. `add_item` - アイテム追加
+#### 20. `add_item` - アイテム追加
 **説明:** データベースに新しいアイテムを追加します。
 **パラメータ:**
 - `projectPath`, `name` (必須)
 - `price`, `consumable`, `scope`, `occasion` (省略可)
 
-#### 20. `add_skill` - スキル追加
+#### 21. `add_skill` - スキル追加
 **説明:** データベースに新しいスキルを追加します。
 **パラメータ:**
 - `projectPath`, `name` (必須)
 - `mpCost`, `tpCost`, `scope`, `occasion` (省略可)
 
-#### 21. `draw_map_tile` - マップタイル描画
+#### 22. `draw_map_tile` - マップタイル描画
 **説明:** マップの指定座標にタイルを配置します。
 **パラメータ:**
 - `projectPath`, `mapId`, `x`, `y`, `layer`, `tileId` (必須)
 
-#### 22. `create_map` - 新規マップ作成
+#### 23. `create_map` - 新規マップ作成
 **説明:** 新しいマップを作成します。
 **パラメータ:**
 - `projectPath` (必須): プロジェクトフォルダの絶対パス
@@ -267,7 +270,7 @@ npm run build:index
 - `height` (省略可): マップ高さ（タイル数、デフォルト: 13）
 - `parentMapId` (省略可): 親マップID（デフォルト: 0）
 
-#### 23. `show_picture` - ピクチャの表示
+#### 24. `show_picture` - ピクチャの表示
 **説明:** イベントにピクチャ表示コマンドを追加します。
 **パラメータ:**
 - `projectPath` (必須): プロジェクトフォルダの絶対パス
@@ -283,7 +286,7 @@ npm run build:index
 - `opacity` (省略可): 不透明度（0-255、デフォルト: 255）
 - `blendMode` (省略可): 合成モード（0-3、デフォルト: 0）
 
-#### 24. `inspect_game_state` - ゲーム状態検査
+#### 25. `inspect_game_state` - ゲーム状態検査
 **説明:** 実行中のゲーム（Puppeteer接続）から変数やスイッチの値を取得します。
 **セキュリティ:** ホワイトリスト方式を採用し、許可されたパターンのみ実行可能です。入力長制限（100文字）とID範囲チェック（1-9999）も実装されています。
 **許可されたパターン例:**
@@ -300,7 +303,7 @@ npm run build:index
 
 ### Phase 5: テスト・自動化
 
-#### 25. `run_playtest` - テストプレイ実行
+#### 26. `run_playtest` - テストプレイ実行
 **説明:** Game.exeを起動し、指定時間後にスクリーンショットを撮影します。Game.exeが見つからない場合は、自動的にブラウザベースのテストプレイ（フォールバックモード）が実行されます。Puppeteer接続用のデバッグポートも指定可能です。
 **パラメータ:**
 - `projectPath` (必須): プロジェクトフォルダの絶対パス
@@ -311,13 +314,13 @@ npm run build:index
 
 ### Phase 6: バックアップ・Undo機能
 
-#### 26. `undo_last_change` - 直前の変更を元に戻す
+#### 27. `undo_last_change` - 直前の変更を元に戻す
 **説明:** 最新のバックアップからファイルを復元します。`filename`を指定しない場合、最も最近変更されたファイルを自動的に復元します。
 **パラメータ:**
 - `projectPath` (必須): プロジェクトフォルダの絶対パス
 - `filename` (省略可): 復元するファイル名（例: 'Actors.json'）。省略時は最新変更ファイルを自動検出
 
-#### 27. `list_backups` - バックアップ一覧表示
+#### 28. `list_backups` - バックアップ一覧表示
 **説明:** 指定したファイル、または全ファイルのバックアップ一覧を表示します。
 **パラメータ:**
 - `projectPath` (必須): プロジェクトフォルダの絶対パス
@@ -516,11 +519,6 @@ MIT License
 - エラーハンドリングの改善と統一
 - 非同期処理の安全性向上
 - マジックナンバーの排除
-
-### v1.5.0 (2025-12-XX)
-- **TypeScript移行完了**: 全handlers層とエントリーポイントをTypeScript化
-- CI/CD統合: GitHub Actionsに型チェックを追加
-- 型安全性の大幅向上
 
 ### v1.3.0 (2025-11-29)
 - 新ツール追加: `add_choice`, `create_map`, `show_picture`, `check_assets_integrity`
