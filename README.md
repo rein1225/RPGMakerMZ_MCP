@@ -21,43 +21,61 @@
 
 ### 方法1: ソースコードから直接実行（開発者向け・推奨）
 
-npmパッケージをインストールする必要はありません。リポジトリをクローンして依存関係をインストールするだけで使用できます。
+npmパッケージをインストールする必要はありません。既にローカルに開発ファイルがある場合は、そのまま使用できます。
 
-#### 1. リポジトリのクローン
+#### 1. 依存関係のインストール（初回のみ）
 
-```bash
-git clone https://github.com/rein1225/RPGMakerMZ_MCP.git
-cd RPGMakerMZ_MCP
-```
-
-#### 2. 依存関係のインストール
+既にローカルに開発ファイルがある場合：
 
 ```bash
+cd C:/Users/1225s/Desktop/dev/RPGMakerMZ_MCP
 npm install
 ```
 
-これだけで準備完了です。TypeScriptファイルを直接実行できます。
+> 💡 **既に`npm install`済みの場合**: このステップはスキップできます。
 
-#### 3. MCP設定ファイルの設定
+#### 2. MCP設定ファイルの設定
 
-Antigravityの設定ファイル（`mcp_config.json`）に以下を追加：
+Antigravityの設定ファイル（`mcp_config.json`）を開いて、以下を追加：
 
+**設定ファイルの場所（Windows）:**
+```
+%APPDATA%\Antigravity\mcp_config.json
+```
+
+**設定内容:**
 ```json
 {
   "mcpServers": {
     "rpg-maker-mz": {
       "command": "npx",
-      "args": ["tsx", "C:/path/to/RPGMakerMZ_MCP/index.ts"],
-      "cwd": "C:/path/to/RPGMakerMZ_MCP"
+      "args": ["tsx", "C:/Users/1225s/Desktop/dev/RPGMakerMZ_MCP/index.ts"],
+      "cwd": "C:/Users/1225s/Desktop/dev/RPGMakerMZ_MCP"
     }
   }
 }
 ```
 
 > ⚠️ **重要**: 
-> - `C:/path/to/RPGMakerMZ_MCP` を実際のプロジェクトパスに置き換えてください
+> - `C:/Users/1225s/Desktop/dev/RPGMakerMZ_MCP` を実際のプロジェクトパスに置き換えてください
 > - Windowsでは`C:/`のようにスラッシュ（`/`）を使用し、バックスラッシュ（`\`）は使用しないでください
 > - `npx tsx`を使用することで、TypeScriptファイルを直接実行できます（ビルド不要）
+
+#### 3. Antigravityを再起動
+
+設定ファイルを保存したら、Antigravityを再起動してください。MCPサーバーが自動的に起動します。
+
+---
+
+**新規セットアップの場合（リポジトリをクローンする場合）:**
+
+```bash
+git clone https://github.com/rein1225/RPGMakerMZ_MCP.git
+cd RPGMakerMZ_MCP
+npm install
+```
+
+その後、上記の「2. MCP設定ファイルの設定」に進んでください。
 
 ### 方法2: npmパッケージからインストール（配布用）
 
