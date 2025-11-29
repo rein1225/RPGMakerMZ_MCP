@@ -139,8 +139,10 @@ export async function writeDataFile(args: WriteDataFileArgs): Promise<HandlerRes
     });
 
     // Cleanup old backups (non-blocking)
-    cleanupOldBackups(resolvedPath).catch(() => {
-        // Ignore cleanup errors
+    cleanupOldBackups(resolvedPath).catch(async (e: unknown) => {
+        await Logger.debug(`Failed to cleanup old backups for ${resolvedPath} (non-critical)`, e).catch(() => {
+            // Last resort: ignore logger errors
+        });
     });
 
     return {

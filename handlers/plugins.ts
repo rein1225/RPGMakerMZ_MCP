@@ -4,6 +4,7 @@ import { validateProjectPath } from "../utils/validation.js";
 import { Errors } from "../utils/errors.js";
 import { HandlerResponse } from "../types/index.js";
 import { withBackup, cleanupOldBackups } from "../utils/backup.js";
+import { Logger } from "../utils/logger.js";
 
 type ProjectArgs = { projectPath: string };
 type WritePluginCodeArgs = ProjectArgs & { filename: string; code: string };
@@ -43,8 +44,10 @@ export async function writePluginCode(args: WritePluginCodeArgs): Promise<Handle
     });
 
     // Cleanup old backups (non-blocking)
-    cleanupOldBackups(filePath).catch(() => {
-        // Ignore cleanup errors
+    cleanupOldBackups(filePath).catch(async (e: unknown) => {
+        await Logger.debug(`Failed to cleanup old backups for ${filePath} (non-critical)`, e).catch(() => {
+            // Last resort: ignore logger errors
+        });
     });
 
     return {
@@ -113,8 +116,10 @@ ${JSON.stringify(plugins, null, 2)};
     });
 
     // Cleanup old backups (non-blocking)
-    cleanupOldBackups(pluginsConfigPath).catch(() => {
-        // Ignore cleanup errors
+    cleanupOldBackups(pluginsConfigPath).catch(async (e: unknown) => {
+        await Logger.debug(`Failed to cleanup old backups for ${pluginsConfigPath} (non-critical)`, e).catch(() => {
+            // Last resort: ignore logger errors
+        });
     });
 
     return {

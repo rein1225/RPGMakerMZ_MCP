@@ -133,7 +133,19 @@ export const toolSchemas: ToolSchema[] = [
             type: "object",
             properties: {
                 projectPath: { type: "string" },
-                plugins: { type: "array" }
+                plugins: { 
+                    type: "array", 
+                    items: { 
+                        type: "object",
+                        properties: {
+                            name: { type: "string" },
+                            status: { type: "boolean" },
+                            description: { type: "string" }
+                        },
+                        required: ["name", "status"]
+                    },
+                    description: "Array of plugin configuration objects"
+                }
             },
             required: ["projectPath", "plugins"]
         }
@@ -216,7 +228,17 @@ export const toolSchemas: ToolSchema[] = [
                 eventId: { type: "number" },
                 pageIndex: { type: "number" },
                 insertPosition: { type: "number" },
-                condition: { type: "object" },
+                condition: { 
+                    type: "object",
+                    properties: {
+                        code: { type: "number", description: "Condition code" },
+                        dataA: { type: "number", description: "First data value" },
+                        operation: { type: "number", description: "Operation type" },
+                        dataB: { type: "number", description: "Second data value" },
+                        class: { type: "number", description: "Optional class ID" }
+                    },
+                    required: ["code", "dataA", "operation", "dataB"]
+                },
                 includeElse: { type: "boolean", default: true }
             },
             required: ["projectPath", "mapId", "eventId", "pageIndex", "insertPosition", "condition"]
@@ -385,6 +407,30 @@ export const toolSchemas: ToolSchema[] = [
                 autoClose: { type: "boolean", default: false, description: "Automatically close game after screenshot" },
                 debugPort: { type: "number", default: 9222, description: "Remote debugging port for Puppeteer" },
                 startNewGame: { type: "boolean", default: false, description: "Skip title and start new game" }
+            },
+            required: ["projectPath"]
+        }
+    },
+    {
+        name: "undo_last_change",
+        description: "Restore a file from its latest backup. If filename is not specified, restores the most recently modified file.",
+        inputSchema: {
+            type: "object",
+            properties: {
+                projectPath: { type: "string" },
+                filename: { type: "string", description: "Optional: specific JSON file to restore (e.g., 'Actors.json'). If omitted, restores the most recently modified file." }
+            },
+            required: ["projectPath"]
+        }
+    },
+    {
+        name: "list_backups",
+        description: "List available backup files for a specific file or all files in the data directory.",
+        inputSchema: {
+            type: "object",
+            properties: {
+                projectPath: { type: "string" },
+                filename: { type: "string", description: "Optional: specific JSON file to list backups for. If omitted, lists backups for all files." }
             },
             required: ["projectPath"]
         }

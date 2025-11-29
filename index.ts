@@ -15,6 +15,7 @@ import * as eventsHandlers from "./handlers/events.js";
 import * as databaseHandlers from "./handlers/database.js";
 import * as mapHandlers from "./handlers/map.js";
 import * as playtestHandlers from "./handlers/playtest.js";
+import * as undoHandlers from "./handlers/undo.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -78,6 +79,8 @@ type DrawMapTileArgs = ProjectArgs & { mapId: number; x: number; y: number; laye
 type CreateMapArgs = ProjectArgs & { mapName: string; width?: number; height?: number; tilesetId?: number };
 type RunPlaytestArgs = ProjectArgs & { duration?: number; autoClose?: boolean; debugPort?: number; startNewGame?: boolean };
 type InspectGameStateArgs = { port?: number; script: string };
+type UndoLastChangeArgs = ProjectArgs & { filename?: string };
+type ListBackupsArgs = ProjectArgs & { filename?: string };
 
 // Tool mapping with strict types
 const toolMap: {
@@ -107,6 +110,8 @@ const toolMap: {
   "show_picture": ToolHandler<ShowPictureArgs>;
   "run_playtest": ToolHandler<RunPlaytestArgs>;
   "inspect_game_state": ToolHandler<InspectGameStateArgs>;
+  "undo_last_change": ToolHandler<UndoLastChangeArgs>;
+  "list_backups": ToolHandler<ListBackupsArgs>;
 } = {
   // Project tools
   "get_project_info": projectHandlers.getProjectInfo,
@@ -149,6 +154,10 @@ const toolMap: {
   // Playtest tools
   "run_playtest": playtestHandlers.runPlaytest,
   "inspect_game_state": playtestHandlers.inspectGameState,
+
+  // Undo tools
+  "undo_last_change": undoHandlers.undoLastChange,
+  "list_backups": undoHandlers.listBackups,
 };
 
 server.setRequestHandler(ListResourcesRequestSchema, async () => {

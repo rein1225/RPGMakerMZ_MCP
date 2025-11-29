@@ -3,6 +3,7 @@ import path from "path";
 import { Errors } from "./errors.js";
 import type { MapData, EventCommand } from "../types/index.js";
 import { withBackup, cleanupOldBackups } from "./backup.js";
+import { Logger } from "./logger.js";
 
 /**
  * Loads map data from a project directory.
@@ -37,8 +38,10 @@ export async function saveMapData(projectPath: string, mapId: number, mapData: M
     });
 
     // Cleanup old backups (non-blocking)
-    cleanupOldBackups(mapFilePath).catch(() => {
-        // Ignore cleanup errors
+    cleanupOldBackups(mapFilePath).catch(async (e: unknown) => {
+        await Logger.debug(`Failed to cleanup old backups for ${mapFilePath} (non-critical)`, e).catch(() => {
+            // Last resort: ignore logger errors
+        });
     });
 }
 

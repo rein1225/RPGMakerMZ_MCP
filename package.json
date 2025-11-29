@@ -22,13 +22,13 @@
     "@modelcontextprotocol/sdk": "^1.22.0",
     "jimp": "^1.6.0",
     "puppeteer": "^24.31.0",
-    "robotjs": "^0.6.0",
     "screenshot-desktop": "^1.15.3",
     "serve-handler": "^6.1.6",
     "zod": "^4.1.12"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^2.1.0",
+    "robotjs": "^0.6.0",
     "tsx": "^4.20.6",
     "typescript": "^5.5.4",
     "vitest": "^2.1.0"

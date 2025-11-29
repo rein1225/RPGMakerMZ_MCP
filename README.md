@@ -384,6 +384,12 @@ RPGツクールMZ＿MCP/
 MIT License
 
 ## 更新履歴
+### v1.4.1 (2025-01-XX)
+- undo_last_changeツールの実装
+- toolSchemas.tsの型定義強化（plugins配列、conditionオブジェクトの詳細スキーマ）
+- 空のcatchブロックにLogger.debug追加
+- robotjsをdevDependenciesに移動
+
 ### v1.4.0 (2025-11-29)
 - セキュリティ強化: パストラバーサル対策、任意コード実行の警告追加
 - エラーハンドリングの改善と統一
@@ -394,12 +400,6 @@ MIT License
 - **TypeScript移行完了**: 全handlers層とエントリーポイントをTypeScript化
 - CI/CD統合: GitHub Actionsに型チェックを追加
 - 型安全性の大幅向上
-
-### v1.4.0 (2025-11-29)
-- セキュリティ強化: パストラバーサル対策、任意コード実行の警告追加
-- エラーハンドリングの改善と統一
-- 非同期処理の安全性向上
-- マジックナンバーの排除
 
 ### v1.3.0 (2025-11-29)
 - 新ツール追加: `add_choice`, `create_map`, `show_picture`, `check_assets_integrity`

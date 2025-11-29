@@ -4,6 +4,7 @@ import { validateProjectPath } from "../utils/validation.js";
 import { Errors } from "../utils/errors.js";
 import { HandlerResponse, Actor, Item, Skill } from "../types/index.js";
 import { withBackup, cleanupOldBackups } from "../utils/backup.js";
+import { Logger } from "../utils/logger.js";
 
 type ProjectArgs = { projectPath: string };
 type AddActorArgs = ProjectArgs & { name: string; classId?: number; initialLevel?: number; maxLevel?: number };
@@ -53,8 +54,10 @@ export async function addActor(args: AddActorArgs): Promise<HandlerResponse> {
     });
 
     // Cleanup old backups (non-blocking)
-    cleanupOldBackups(filePath).catch(() => {
-        // Ignore cleanup errors
+    cleanupOldBackups(filePath).catch(async (e: unknown) => {
+        await Logger.debug(`Failed to cleanup old backups for ${filePath} (non-critical)`, e).catch(() => {
+            // Last resort: ignore logger errors
+        });
     });
 
     return {
@@ -108,8 +111,10 @@ export async function addItem(args: AddItemArgs): Promise<HandlerResponse> {
     });
 
     // Cleanup old backups (non-blocking)
-    cleanupOldBackups(filePath).catch(() => {
-        // Ignore cleanup errors
+    cleanupOldBackups(filePath).catch(async (e: unknown) => {
+        await Logger.debug(`Failed to cleanup old backups for ${filePath} (non-critical)`, e).catch(() => {
+            // Last resort: ignore logger errors
+        });
     });
 
     return {
@@ -168,8 +173,10 @@ export async function addSkill(args: AddSkillArgs): Promise<HandlerResponse> {
     });
 
     // Cleanup old backups (non-blocking)
-    cleanupOldBackups(filePath).catch(() => {
-        // Ignore cleanup errors
+    cleanupOldBackups(filePath).catch(async (e: unknown) => {
+        await Logger.debug(`Failed to cleanup old backups for ${filePath} (non-critical)`, e).catch(() => {
+            // Last resort: ignore logger errors
+        });
     });
 
     return {
