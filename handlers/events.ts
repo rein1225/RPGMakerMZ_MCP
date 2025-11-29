@@ -194,7 +194,7 @@ export async function updateEventCommand(args: UpdateEventCommandArgs): Promise<
     // Zodバリデーション
     const validation = validateEventCommand(newCommand);
     if (!validation.success) {
-        throw Errors.invalidParameter("newCommand", validation.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', '));
+        throw Errors.invalidParameter("newCommand", validation.error.issues.map(e => `${e.path.join('.')}: ${e.message}`).join(', '));
     }
 
     const mapData = await loadMapData(projectPath, mapId);

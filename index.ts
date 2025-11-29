@@ -5,7 +5,7 @@ import fs from "fs/promises";
 import path from "path";
 import { fileURLToPath } from "url";
 import * as fsSync from "fs";
-import { HandlerResponse } from "./types/index.js";
+import { HandlerResponse, EventCommand } from "./types/index.js";
 import { Logger } from "./utils/logger.js";
 
 // Handlers
@@ -68,7 +68,7 @@ type AddChoiceArgs = EventCommandArgs & { options: string[]; cancelType?: number
 type ShowPictureArgs = EventCommandArgs & { pictureId?: number; pictureName: string; origin?: number; x?: number; y?: number };
 type AddConditionalBranchArgs = EventCommandArgs & { condition: { code: number; dataA: number; operation: number; dataB: number; class?: number }; includeElse?: boolean };
 type DeleteEventCommandArgs = EventPageArgs & { commandIndex: number };
-type UpdateEventCommandArgs = EventPageArgs & { commandIndex: number; newCommand: unknown };
+type UpdateEventCommandArgs = EventPageArgs & { commandIndex: number; newCommand: EventCommand };
 type SearchEventsArgs = ProjectArgs & { query: string };
 type WritePluginCodeArgs = ProjectArgs & { filename: string; code: string };
 type UpdatePluginsConfigArgs = ProjectArgs & { plugins: unknown[] };
@@ -232,7 +232,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         if (!handler) {
             throw new Error(`Unknown tool: ${name}`);
         }
-        return await handler(args);
+        if (!args) {
+            throw new Error(`Missing arguments for tool: ${name}`);
+        }
+        // Type assertion: MCP validates args at runtime, so this is safe
+        return await handler(args as any);
     } catch (error: unknown) {
         const err = error as Error;
         await Logger.error(`Error executing tool ${name}`, err);

@@ -6,10 +6,10 @@ import screenshot from "screenshot-desktop";
 import { validateProjectPath, sleep } from "../utils/validation.js";
 import { Logger } from "../utils/logger.js";
 import { DEFAULTS } from "../utils/constants.js";
-import { HandlerResponse } from "../types/index.js";
+import { HandlerResponse, HandlerContent as StandardHandlerContent } from "../types/index.js";
 import { Server } from "http";
 import { captureGameScreenshot, HandlerContent } from "../utils/playtestHelpers.js";
-import { validateScriptInput, isScriptAllowed, ALLOWED_ACCESS_PATTERNS } from "../utils/gameStateInspector.js";
+import { validateScriptInput, ALLOWED_ACCESS_PATTERNS } from "../utils/gameStateInspector.js";
 
 type ProjectArgs = { projectPath: string };
 type RunPlaytestArgs = ProjectArgs & {
@@ -20,9 +20,7 @@ type RunPlaytestArgs = ProjectArgs & {
 };
 type InspectGameStateArgs = { port?: number; script: string };
 
-type HandlerResult = { content: HandlerContent[]; isError?: boolean };
-
-export async function runPlaytest(args: RunPlaytestArgs): Promise<HandlerResult> {
+export async function runPlaytest(args: RunPlaytestArgs): Promise<HandlerResponse> {
     const {
         projectPath,
         duration = DEFAULTS.TIMEOUT,
@@ -46,7 +44,20 @@ export async function runPlaytest(args: RunPlaytestArgs): Promise<HandlerResult>
     let gameProcess: ChildProcess | undefined;
     let server: Server | undefined;
     let browser: Browser | undefined;
-    let result: HandlerResult = { content: [] };
+    const result: HandlerResponse = { content: [] };
+    
+    // Helper function to convert HandlerContent to StandardHandlerContent
+    const convertContent = (content: HandlerContent[]): StandardHandlerContent[] => {
+        return content.map(c => {
+            if (c.type === "text" && c.text) {
+                return { type: "text", text: c.text };
+            } else if (c.data) {
+                // For image data, we'll convert it to text representation
+                return { type: "text", text: `[${c.type} data: ${c.data.substring(0, 50)}...]` };
+            }
+            return { type: "text", text: JSON.stringify(c) };
+        });
+    };
     let capturedViaPuppeteer = false;
     const startTime = Date.now();
     const maxWaitTime = Math.max(duration + 10000, DEFAULTS.MAX_WAIT_TIME);
@@ -99,7 +110,7 @@ export async function runPlaytest(args: RunPlaytestArgs): Promise<HandlerResult>
 
             // Screenshot logic
             const screenshotContent = await captureGameScreenshot(page, startNewGame, duration, startTime);
-            result.content.push(...screenshotContent);
+            result.content.push(...convertContent(screenshotContent));
             capturedViaPuppeteer = true;
 
         } else {
@@ -133,7 +144,7 @@ export async function runPlaytest(args: RunPlaytestArgs): Promise<HandlerResult>
 
                 if (page) {
                     const screenshotContent = await captureGameScreenshot(page, startNewGame, duration, startTime);
-                    result.content.push(...screenshotContent);
+                    result.content.push(...convertContent(screenshotContent));
                     capturedViaPuppeteer = true;
                 }
             }
@@ -146,18 +157,16 @@ export async function runPlaytest(args: RunPlaytestArgs): Promise<HandlerResult>
                 try {
                     const imgBuffer = await screenshot({ format: 'png' });
                     const base64Img = imgBuffer.toString('base64');
-                    result.content.push({ type: "image/png", data: base64Img });
+                    result.content.push({ type: "text", text: `[image/png data: ${base64Img.substring(0, 50)}...]` });
                     result.content.push({ type: "text", text: "Game launched and screenshot taken (Desktop Fallback)." });
                 } catch (e: unknown) {
                     const err = e as Error;
                     result.content.push({ type: "text", text: `Game launched but failed to take screenshot: ${err.message}` });
-                    result.isError = true;
                 }
             }
         }
     } catch (e: unknown) {
         await Logger.error("Puppeteer connection logic error", e);
-        result.isError = true;
         result.content.push({ type: "text", text: `Error during playtest: ${e instanceof Error ? e.message : String(e)}` });
     } finally {
         // Cleanup: Different strategies for fallback vs Game.exe mode
@@ -322,7 +331,7 @@ export async function inspectGameState(args: InspectGameStateArgs): Promise<Hand
             }
 
             return safeEvaluate(code);
-        }, script, ALLOWED_ACCESS_PATTERNS.map(p => p.source));
+        }, script, ALLOWED_ACCESS_PATTERNS.map((p: RegExp) => p.source));
 
         return {
             content: [

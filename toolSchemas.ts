@@ -10,7 +10,9 @@ type ToolSchema = {
             description?: string;
             default?: unknown;
             enum?: string[];
-            items?: { type: string };
+            items?: { type: string; properties?: Record<string, unknown>; required?: string[] };
+            properties?: Record<string, unknown>;
+            required?: string[];
         }>;
         required: string[];
     };
