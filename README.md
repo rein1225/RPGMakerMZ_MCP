@@ -2,16 +2,19 @@
 
 ![Tests](https://github.com/rein1225/RPGMakerMZ_MCP/actions/workflows/test.yml/badge.svg)
 
-> ⚠ **実験版 / WIP**
+> ⚠ **実験版 / WIP / 作者環境専用**
 >
 > これは「RPGツクールMZをAIにいじらせるためのMCPサーバー」の **開発中バージョン (0.x)** です。  
-> 仕様はまだ固まっておらず、アップデートで **平気で壊れます**。
+> **作者の環境（Windows + Antigravity）でのみ動作確認済み**です。
 >
-> - テスト用プロジェクトでの利用を推奨  
-> - 本番データを触らせる前にバックアップ必須  
-> - issue / PR / フィードバックは大歓迎
+> **重要な注意事項：**
+> - 他の環境・MCPクライアントでは**動かない可能性が高い**です
+> - Antigravityの実装やCWDの都合で、汎用的に見える設定方法が動作しない場合があります
+> - コードを読んで、必要に応じてパスや設定を変更してください
+> - テスト用プロジェクトでの利用を推奨
+> - 本番データを触らせる前にバックアップ必須
 >
-> 「試してみたい変態向け」のリリースなので、自己責任で遊んでください。
+> 「自分用ツール ＋ コード公開」という位置づけです。自己責任で使用してください。
 
 ## TL;DR（超短縮版）
 
@@ -63,12 +66,42 @@
 
 ### Google Antigravity
 
-Antigravityは `.gemini/antigravity` をカレントディレクトリとしてMCPサーバーを起動するため、プロジェクト相対パス（`./node_modules/...`）は使えません。`npx`経由で起動することを推奨します。
+> ⚠️ **環境依存の警告**: Antigravityの実装やCWDの都合で、汎用的に見える設定方法（`npx`、`rpg-maker-mz-mcp`コマンド、相対パスなど）が**動作しない可能性があります**。  
+> 以下は**作者の環境で実際に動作した設定例**です。環境が異なる場合は、パスを適宜変更してください。
 
-#### 設定方法
+#### 設定方法（実際に動作した例）
 
-`mcp_config.json` に以下を追加します：
+まず、グローバルにインストール：
 
+```bash
+npm install -g @rein634/rpg-maker-mz-mcp
+```
+
+`mcp_config.json` に以下を追加します（**絶対パスを使用**）：
+
+```json
+{
+  "mcpServers": {
+    "rpg-maker-mz": {
+      "command": "node",
+      "args": [
+        "C:/Users/1225s/AppData/Roaming/npm/node_modules/@rein634/rpg-maker-mz-mcp/dist/index.js"
+      ]
+    }
+  }
+}
+```
+
+> ⚠️ **重要**: 
+> - `C:/Users/1225s/AppData/Roaming/npm/node_modules/...` の部分を、**あなたの環境での実際のパス**に置き換えてください
+> - Windowsでは`C:/`のようにスラッシュ（`/`）を使用し、バックスラッシュ（`\`）は使用しないでください
+> - パスは環境変数 `%APPDATA%\npm\node_modules\@rein634\rpg-maker-mz-mcp\dist\index.js` を展開した形になります
+
+#### その他の設定方法（動作しない可能性あり）
+
+以下の設定方法は、Antigravityの環境依存により**動作しない可能性があります**：
+
+**方法A: npx経由（推奨されない）**
 ```json
 {
   "mcpServers": {
@@ -80,10 +113,29 @@ Antigravityは `.gemini/antigravity` をカレントディレクトリとしてM
 }
 ```
 
-> ✅ **ポイント**:
-> - `npm install -g` すら不要（npxが勝手にパッケージを取得します）
-> - CWDに依存しないため、`.gemini/antigravity` からでも動作します
-> - どのユーザー環境でも同じ設定で動作します
+**方法B: コマンド名直接指定（推奨されない）**
+```json
+{
+  "mcpServers": {
+    "rpg-maker-mz": {
+      "command": "rpg-maker-mz-mcp"
+    }
+  }
+}
+```
+
+**方法C: 相対パス（動作しない）**
+```json
+{
+  "mcpServers": {
+    "rpg-maker-mz": {
+      "command": "node",
+      "args": ["./node_modules/@rein634/rpg-maker-mz-mcp/dist/index.js"]
+    }
+  }
+}
+```
+> ❌ Antigravityは `.gemini/antigravity` をカレントディレクトリとして起動するため、相対パスは使えません
 
 #### 起動確認
 
@@ -102,7 +154,8 @@ Antigravityを再起動し、**MCP Servers** → **Refresh** を実行してく�
 
 ### プロジェクトローカル (Cursor / Claude Code など)
 
-プロジェクトルートに設定ファイルを置くMCPクライアント向けの設定です。
+> ⚠️ **未検証**: 以下の設定は**作者の環境では検証していません**。  
+> プロジェクトルートに設定ファイルを置くMCPクライアント向けの想定設定です。動作しない場合は、コードを読んで環境に合わせて調整してください。
 
 #### 1. プロジェクトにインストール
 
@@ -127,10 +180,10 @@ npm install -D @rein634/rpg-maker-mz-mcp
 }
 ```
 
-> ✅ **ポイント**:
-> - ワークスペースのルートからの相対パスを使用するため、Windows / Mac / Linux 共通で動作します
-> - グローバルPATHやラッパースクリプトに依存しません
-> - **この設定ファイルは、プロジェクトルートに置くこと**を前提としています
+> ⚠️ **注意**: 
+> - この設定は**作者の環境では検証していません**
+> - MCPクライアントの実装やCWDの都合で動作しない可能性があります
+> - 動作しない場合は、絶対パスを使用するか、環境に合わせて調整してください
 
 ---
 
