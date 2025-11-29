@@ -1,4 +1,4 @@
-import puppeteer, { Browser, Page } from "puppeteer";
+import puppeteer, { Browser } from "puppeteer";
 import { spawn, ChildProcess } from "child_process";
 import fs from "fs/promises";
 import path from "path";
@@ -8,6 +8,8 @@ import { Logger } from "../utils/logger.js";
 import { DEFAULTS } from "../utils/constants.js";
 import { HandlerResponse } from "../types/index.js";
 import { Server } from "http";
+import { captureGameScreenshot, HandlerContent } from "../utils/playtestHelpers.js";
+import { validateScriptInput, isScriptAllowed, ALLOWED_ACCESS_PATTERNS } from "../utils/gameStateInspector.js";
 
 type ProjectArgs = { projectPath: string };
 type RunPlaytestArgs = ProjectArgs & {
@@ -18,7 +20,6 @@ type RunPlaytestArgs = ProjectArgs & {
 };
 type InspectGameStateArgs = { port?: number; script: string };
 
-type HandlerContent = { type: string; text?: string; data?: string };
 type HandlerResult = { content: HandlerContent[]; isError?: boolean };
 
 export async function runPlaytest(args: RunPlaytestArgs): Promise<HandlerResult> {
@@ -227,197 +228,17 @@ export async function runPlaytest(args: RunPlaytestArgs): Promise<HandlerResult>
     return result;
 }
 
-async function captureGameScreenshot(
-    page: Page,
-    startNewGame: boolean,
-    duration: number,
-    startTime: number
-): Promise<HandlerContent[]> {
-    const content: HandlerContent[] = [];
-    try {
-        await page.waitForSelector('#gameCanvas', { timeout: duration });
-        await Logger.debug("Found #gameCanvas.");
-
-        if (startNewGame) {
-            await Logger.debug("Attempting to start new game...");
-            try {
-                await page.waitForFunction(() => {
-                    const win = globalThis as any;
-                    return win.SceneManager && win.SceneManager._scene && win.SceneManager._scene.constructor.name === 'Scene_Title';
-                }, { timeout: 10000 });
-                await Logger.debug("Scene_Title detected.");
-                await page.evaluate(() => { 
-                    const win = globalThis as any;
-                    win.DataManager.setupNewGame(); 
-                    win.SceneManager.goto(win.Scene_Map); 
-                });
-                await Logger.debug("New Game command sent.");
-            } catch (e: unknown) {
-                const err = e as Error;
-                await Logger.debug(`Failed to start new game: ${err.message}`);
-            }
-        }
-
-        const remainingTime = Math.max(2000, duration - (Date.now() - startTime));
-        try {
-            await page.waitForFunction((targetScene: string | null) => {
-                const win = globalThis as any;
-                if (!win.SceneManager || !win.SceneManager._scene) return false;
-                const sceneName = win.SceneManager._scene.constructor.name;
-                if (sceneName === 'Scene_Boot') return false;
-                if (targetScene && sceneName !== targetScene) return false;
-                return true;
-            }, { timeout: remainingTime }, startNewGame ? 'Scene_Map' : null);
-            await Logger.debug("Scene ready check passed.");
-        } catch (e: unknown) {
-            await Logger.debug("Scene ready check timed out.");
-        }
-
-        await sleep(1000);
-
-        try {
-            const canvasDataUrl = await page.evaluate(() => {
-                const canvas = (globalThis as any).document.querySelector('#gameCanvas');
-                return canvas.toDataURL('image/png');
-            });
-            const base64Data = canvasDataUrl.replace(/^data:image\/png;base64,/, "");
-            content.push({ type: "image/png", data: base64Data });
-            content.push({ type: "text", text: `Game launched and screenshot taken via Canvas.toDataURL. (New Game: ${startNewGame})` });
-            await Logger.debug("Screenshot taken via Canvas.toDataURL.");
-        } catch (e: unknown) {
-            const err = e as Error;
-            await Logger.debug(`Canvas toDataURL failed: ${err.message}`);
-            const base64Img = await page.screenshot({ encoding: 'base64' }) as string;
-            content.push({ type: "image/png", data: base64Img });
-            content.push({ type: "text", text: `Game launched and screenshot taken via Puppeteer page.screenshot. (New Game: ${startNewGame})` });
-            await Logger.debug("Screenshot taken via page.screenshot.");
-        }
-    } catch (e: unknown) {
-        await Logger.error("Puppeteer operation failed", e);
-    }
-    return content;
-}
-
-/**
- * Whitelist of allowed property access patterns for game state inspection
- * Only these patterns are allowed to prevent arbitrary code execution
- */
-const ALLOWED_ACCESS_PATTERNS = [
-    /^\$gameVariables\.value\(\d+\)$/,
-    /^\$gameSwitches\.value\(\d+\)$/,
-    /^\$gameActors\.actor\(\d+\)$/,
-    /^\$gameParty\.members\(\)$/,
-    /^\$gameParty\.gold\(\)$/,
-    /^\$gameParty\.items\(\)$/,
-    /^\$gameParty\.weapons\(\)$/,
-    /^\$gameParty\.armors\(\)$/,
-    /^\$gameMap\.mapId\(\)$/,
-    /^\$gamePlayer\.x\(\)$/,
-    /^\$gamePlayer\.y\(\)$/,
-    /^\$gamePlayer\.screenX\(\)$/,
-    /^\$gamePlayer\.screenY\(\)$/,
-    /^SceneManager\._scene$/,
-    /^SceneManager\._scene\.constructor\.name$/,
-    /^DataManager\._globalId$/,
-    /^Graphics\.width$/,
-    /^Graphics\.height$/,
-] as const;
-
-/**
- * Validates if a script matches allowed access patterns
- */
-function isScriptAllowed(script: string): boolean {
-    const trimmed = script.trim();
-    return ALLOWED_ACCESS_PATTERNS.some(pattern => pattern.test(trimmed));
-}
-
-/**
- * Safe evaluator that only allows whitelisted property access
- */
-function safeEvaluate(script: string): unknown {
-    if (!isScriptAllowed(script)) {
-        throw new Error(`Script not allowed: ${script}. Only whitelisted RPG Maker MZ game state access patterns are permitted.`);
-    }
-
-    // Use Function constructor instead of eval for slightly better sandboxing
-    // Still executes in page context, but prevents direct eval scope access
-    try {
-        const func = new Function('return ' + script);
-        return func();
-    } catch (e) {
-        // If Function constructor fails, try direct property access parsing
-        // This handles cases like $gameVariables.value(1) more safely
-        const win = globalThis as any;
-        
-        // Parse simple property access patterns
-        if (script.startsWith('$gameVariables.value(')) {
-            const match = script.match(/\$gameVariables\.value\((\d+)\)/);
-            if (match && win.$gameVariables) {
-                return win.$gameVariables.value(parseInt(match[1], 10));
-            }
-        }
-        if (script.startsWith('$gameSwitches.value(')) {
-            const match = script.match(/\$gameSwitches\.value\((\d+)\)/);
-            if (match && win.$gameSwitches) {
-                return win.$gameSwitches.value(parseInt(match[1], 10));
-            }
-        }
-        if (script.startsWith('$gameActors.actor(')) {
-            const match = script.match(/\$gameActors\.actor\((\d+)\)/);
-            if (match && win.$gameActors) {
-                return win.$gameActors.actor(parseInt(match[1], 10));
-            }
-        }
-        if (script === '$gameParty.members()' && win.$gameParty) {
-            return win.$gameParty.members();
-        }
-        if (script === '$gameParty.gold()' && win.$gameParty) {
-            return win.$gameParty.gold();
-        }
-        if (script === '$gameMap.mapId()' && win.$gameMap) {
-            return win.$gameMap.mapId();
-        }
-        if (script === '$gamePlayer.x()' && win.$gamePlayer) {
-            return win.$gamePlayer.x();
-        }
-        if (script === '$gamePlayer.y()' && win.$gamePlayer) {
-            return win.$gamePlayer.y();
-        }
-        if (script === 'SceneManager._scene' && win.SceneManager) {
-            return win.SceneManager._scene;
-        }
-        if (script === 'SceneManager._scene.constructor.name' && win.SceneManager?._scene) {
-            return win.SceneManager._scene.constructor.name;
-        }
-        
-        throw new Error(`Failed to evaluate script: ${script}. Error: ${e instanceof Error ? e.message : String(e)}`);
-    }
-}
 
 export async function inspectGameState(args: InspectGameStateArgs): Promise<HandlerResponse> {
     const { port = DEFAULTS.PORT, script } = args;
 
-    // Security: Input length limit (ReDoS対策)
-    const MAX_SCRIPT_LENGTH = 100;
-    if (script.length > MAX_SCRIPT_LENGTH) {
-        await Logger.error(`Security violation: Script too long`, new Error(`Script length: ${script.length}, max: ${MAX_SCRIPT_LENGTH}`));
-        throw new Error(`Script too long (max ${MAX_SCRIPT_LENGTH} chars)`);
-    }
-
-    // Security: Validate script against whitelist before execution
-    if (!isScriptAllowed(script)) {
-        await Logger.error(`Security violation: Attempted to execute non-whitelisted script`, new Error(script));
-        throw new Error(`Script not allowed: ${script}. Only whitelisted RPG Maker MZ game state access patterns are permitted.`);
-    }
-
-    // Security: ID range validation (1-9999)
-    const idMatch = script.match(/\((\d+)\)/);
-    if (idMatch) {
-        const id = parseInt(idMatch[1], 10);
-        if (isNaN(id) || id < 1 || id > 9999) {
-            await Logger.error(`Security violation: ID out of range`, new Error(`ID: ${id}`));
-            throw new Error(`ID out of allowed range (1-9999): ${id}`);
-        }
+    // Validate script input
+    try {
+        validateScriptInput(script);
+    } catch (error: unknown) {
+        const err = error as Error;
+        await Logger.error(`Security violation: Script validation failed`, err);
+        throw err;
     }
 
     await Logger.info(`Executing whitelisted game state access: ${script}`);
@@ -436,18 +257,17 @@ export async function inspectGameState(args: InspectGameStateArgs): Promise<Hand
 
         const page = pages[0];
         // Inject safe evaluator function into page context
-        const evalResult = await page.evaluate((code, allowedPatterns) => {
-            // Recreate safeEvaluate in page context
-            function isScriptAllowed(script: string): boolean {
+        const evalResult = await page.evaluate((code: string, allowedPatterns: string[]) => {
+            function isScriptAllowed(script: string, patterns: string[]): boolean {
                 const trimmed = script.trim();
-                return allowedPatterns.some((pattern: string) => {
+                return patterns.some((pattern: string) => {
                     const regex = new RegExp(pattern);
                     return regex.test(trimmed);
                 });
             }
 
             function safeEvaluate(script: string): unknown {
-                if (!isScriptAllowed(script)) {
+                if (!isScriptAllowed(script, allowedPatterns)) {
                     throw new Error(`Script not allowed: ${script}. Only whitelisted RPG Maker MZ game state access patterns are permitted.`);
                 }
 
@@ -457,7 +277,6 @@ export async function inspectGameState(args: InspectGameStateArgs): Promise<Hand
                 } catch (e) {
                     const win = globalThis as any;
                     
-                    // Parse simple property access patterns
                     if (script.startsWith('$gameVariables.value(')) {
                         const match = script.match(/\$gameVariables\.value\((\d+)\)/);
                         if (match && win.$gameVariables) {
