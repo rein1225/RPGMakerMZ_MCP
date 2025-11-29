@@ -1,0 +1,28 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true
+  },
+  "include": [
+    "index.ts",
+    "handlers/**/*.ts",
+    "utils/**/*.ts",
+    "types/**/*.ts",
+    "schemas/**/*.js",
+    "resources/**/*.json"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "test_project",
+    "automation",
+    "**/*.test.js",
+    "**/*.test.ts",
+    "**/*.test.d.ts"
+  ]
+}
+

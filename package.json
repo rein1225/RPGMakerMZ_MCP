@@ -1,8 +1,32 @@
 {
-  "name": "rpg-maker-mz-mcp",
+  "name": "@rein1225/rpg-maker-mz-mcp",
   "version": "1.0.0",
-  "description": "MCP server for RPG Maker MZ",
-  "main": "index.ts",
+  "description": "MCP server for RPG Maker MZ game development automation",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "rpg-maker-mz-mcp": "./dist/index.js"
+  },
+  "files": [
+    "dist/",
+    "resources/",
+    "README.md"
+  ],
+  "keywords": [
+    "mcp",
+    "rpg-maker",
+    "rpg-maker-mz",
+    "game-development",
+    "automation",
+    "model-context-protocol"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rein1225/RPGMakerMZ_MCP.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "start": "tsx index.ts",
     "test": "vitest",
@@ -10,12 +34,13 @@
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit --pretty false",
     "test:e2e": "node automation/test_full_suite.js",
+    "build": "tsc -p tsconfig.build.json",
+    "prepublishOnly": "npm run build && npm run test:run",
     "build:utils": "tsc -p tsconfig.utils.json",
     "build:handlers": "tsc -p tsconfig.handlers.json",
     "build:index": "tsc index.ts --outDir . --module esnext --target es2022 --moduleResolution node --esModuleInterop --skipLibCheck"
   },
-  "keywords": [],
-  "author": "",
+  "author": "rein1225",
   "license": "ISC",
   "type": "module",
   "dependencies": {

@@ -5,9 +5,10 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
-  test:
+  unit-test:
     runs-on: ubuntu-latest
 
     strategy:
@@ -24,6 +25,64 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
+        run: npm ci
+
+      - name: Run typecheck
+        run: npm run typecheck
+
+      - name: Run unit tests
+        run: npm run test:run
+
+      - name: Run coverage (Node 20 only)
+        if: matrix.node-version == '20.x'
+        run: npm run test:coverage
+
+      - name: Upload coverage to Codecov
+        if: matrix.node-version == '20.x'
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage/coverage-final.json
+          fail_ci_if_error: false
+
+  # E2E tests require actual RPG Maker MZ game environment
+  # Run manually via workflow_dispatch or on Windows self-hosted runner
+  e2e-test:
+    runs-on: windows-latest
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+      - name: Install dependencies
+        run: npm ci
+      - name: Run E2E tests
+        run: npm run test:e2e
+        env:
+          TEST_PROJECT_PATH: ${{ github.workspace }}/test_project
+
+  # Browser-based E2E tests (Puppeteer headless)
+  e2e-browser:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Puppeteer dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgbm-dev libxkbcommon-dev libxcomposite-dev libxdamage-dev libxrandr-dev libasound2-dev libpangoft2-1.0-0 libatk-bridge2.0-0
+      - name: Run browser-based E2E
+        run: npm run test:e2e
+        env:
+          PUPPETEER_HEADLESS: true
+          TEST_PROJECT_PATH: ${{ github.workspace }}/test_project
         run: npm ci
 
       - name: Run typecheck
