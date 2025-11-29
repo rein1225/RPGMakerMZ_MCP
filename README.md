@@ -58,6 +58,7 @@ Antigravityの設定ファイル（`mcp_config.json`）に以下を追加：
 > - `C:/path/to/RPGMakerMZ_MCP` を実際のプロジェクトパスに置き換えてください
 > - Windowsでは`C:/`のようにスラッシュ（`/`）を使用し、バックスラッシュ（`\`）は使用しないでください
 > - `npx tsx`を使用することで、TypeScriptファイルを直接実行できます（ビルド不要）
+> - **`cwd`プロパティが許可されていない場合**: トラブルシューティングのQ1を参照してください（npmパッケージの使用やバッチファイル経由の実行を推奨）
 
 ### 方法2: npmパッケージからインストール（配布用）
 
@@ -376,8 +377,11 @@ search_events({ projectPath: "c:/path/to/project", query: "ポーション" });
 
 ## トラブルシューティング
 
-### Q1: MCP設定でエラー「invalid character '-' after array element」
-**原因:** MCP設定ファイル（`mcp_config.json`）のJSON構文エラーです。
+### Q1: MCP設定でエラー「invalid character '-' after array element」または「プロパティ cwd は許可されていません」
+**原因:** 
+- JSON構文エラー（コメント、末尾カンマなど）
+- 使用しているMCPクライアントが`cwd`プロパティをサポートしていない
+
 **解決策:**
 
 #### ステップ1: JSON構文を確認
@@ -398,7 +402,7 @@ search_events({ projectPath: "c:/path/to/project", query: "ポーション" });
 }
 ```
 
-**tsxを使用する場合:**
+**tsxを使用する場合（cwdが使える場合）:**
 ```json
 {
   "mcpServers": {
@@ -410,6 +414,59 @@ search_events({ projectPath: "c:/path/to/project", query: "ポーション" });
   }
 }
 ```
+
+**tsxを使用する場合（cwdプロパティが許可されていない場合）:**
+`cwd`プロパティが許可されていないMCPクライアントでは、以下のいずれかの方法を使用してください：
+
+**方法A: npmパッケージを使用（最も簡単）**
+```bash
+npm install -g @rein1225/rpg-maker-mz-mcp
+```
+```json
+{
+  "mcpServers": {
+    "rpg-maker-mz": {
+      "command": "rpg-maker-mz-mcp"
+    }
+  }
+}
+```
+
+**方法B: バッチファイル経由で実行**
+プロジェクトルートに`run_mcp.bat`を作成：
+```batch
+@echo off
+cd /d C:/path/to/RPGMakerMZ_MCP
+npx tsx index.ts
+```
+設定ファイル：
+```json
+{
+  "mcpServers": {
+    "rpg-maker-mz": {
+      "command": "C:/path/to/RPGMakerMZ_MCP/run_mcp.bat"
+    }
+  }
+}
+```
+> 💡 **注意**: `C:/path/to/RPGMakerMZ_MCP`を実際のプロジェクトパスに置き換えてください。
+
+**方法C: 絶対パスでnodeを直接使用（ビルドが必要）**
+```bash
+cd C:/path/to/RPGMakerMZ_MCP
+npm run build
+```
+```json
+{
+  "mcpServers": {
+    "rpg-maker-mz": {
+      "command": "node",
+      "args": ["C:/path/to/RPGMakerMZ_MCP/dist/index.js"]
+    }
+  }
+}
+```
+> 💡 **注意**: `C:/path/to/RPGMakerMZ_MCP`を実際のプロジェクトパスに置き換えてください。
 
 **よくある間違い:**
 - ❌ **コメントを使用**: `// これはコメント` → JSONはコメント非対応
