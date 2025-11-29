@@ -528,6 +528,15 @@ MCP設定ファイルに以下を追加：
 - `autoClose` (省略可): trueの場合、撮影後にゲームを自動終了します。（デフォルト: false）
 - `debugPort` (省略可): リモートデバッグ用ポート（例: 9222）。Puppeteerで接続する場合に使用します。
 - `startNewGame` (省略可): trueの場合、タイトル画面をスキップしてニューゲームを開始します。（デフォルト: false）
+- `postLaunchScript` (省略可): ゲーム起動後に実行するJavaScriptコード。デバッグUIの表示やイベントの注入などに使用します。
+
+**postLaunchScriptの使用例:**
+```json
+{
+  "projectPath": "C:/Games/MyProject",
+  "postLaunchScript": "Input._currentState['debug'] = true; setTimeout(() => { Input._currentState['debug'] = false; }, 100);"
+}
+```
 
 ### Phase 6: バックアップ・Undo機能
 
