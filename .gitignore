@@ -17,6 +17,18 @@ coverage/
 dist/
 build/
 
+# TypeScript compiled outputs
+*.js.map
+handlers/*.js
+utils/mapHelpers.js
+utils/validation.js
+!handlers/*.test.js
+!utils/*.test.js
+!utils/commandAnnotator.js
+!utils/constants.js
+!utils/errors.js
+!utils/logger.js
+
 # IDE
 .vscode/
 .idea/

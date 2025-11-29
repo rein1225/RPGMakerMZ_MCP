@@ -2,10 +2,22 @@ import { validateProjectPath } from "../utils/validation.js";
 import { loadMapData, saveMapData, getEventPageList } from "../utils/mapHelpers.js";
 import { annotateCommand } from "../utils/commandAnnotator.js";
 import { EVENT_CODES } from "../utils/constants.js";
+import { HandlerResponse, EventCommand } from "../types/index.js";
 import fs from "fs/promises";
 import path from "path";
 
-export async function getEventPage(args) {
+type ProjectArgs = { projectPath: string };
+type EventPageArgs = ProjectArgs & { mapId: number; eventId: string; pageIndex: number };
+type EventCommandArgs = EventPageArgs & { insertPosition: number };
+type AddDialogueArgs = EventCommandArgs & { text: string; face?: string; faceIndex?: number; background?: number; position?: number };
+type AddChoiceArgs = EventCommandArgs & { options: string[]; cancelType?: number };
+type ShowPictureArgs = EventCommandArgs & { pictureId?: number; pictureName: string; origin?: number; x?: number; y?: number };
+type AddConditionalBranchArgs = EventCommandArgs & { condition: { code: number; dataA: number; operation: number; dataB: number; class?: number }; includeElse?: boolean };
+type DeleteEventCommandArgs = EventPageArgs & { commandIndex: number };
+type UpdateEventCommandArgs = EventPageArgs & { commandIndex: number; newCommand: EventCommand };
+type SearchEventsArgs = ProjectArgs & { query: string };
+
+export async function getEventPage(args: EventPageArgs): Promise<HandlerResponse> {
     const { projectPath, mapId, eventId, pageIndex } = args;
     await validateProjectPath(projectPath);
     const mapData = await loadMapData(projectPath, mapId);
@@ -14,13 +26,13 @@ export async function getEventPage(args) {
     return { content: [{ type: "text", text: JSON.stringify(annotatedList, null, 2) }] };
 }
 
-export async function addDialogue(args) {
+export async function addDialogue(args: AddDialogueArgs): Promise<HandlerResponse> {
     const { projectPath, mapId, eventId, pageIndex, insertPosition, text, face = "", faceIndex = 0, background = 0, position = 2 } = args;
     await validateProjectPath(projectPath);
     const mapData = await loadMapData(projectPath, mapId);
     const list = getEventPageList(mapData, eventId, pageIndex, mapId);
     const pos = insertPosition === -1 ? list.length - 1 : insertPosition;
-    const cmds = [];
+    const cmds: EventCommand[] = [];
     cmds.push({ code: EVENT_CODES.SHOW_TEXT, indent: 0, parameters: [face, faceIndex, background, position] });
     const lines = text.split('\n');
     lines.forEach(line => { cmds.push({ code: EVENT_CODES.TEXT_DATA, indent: 0, parameters: [line] }); });
@@ -29,7 +41,7 @@ export async function addDialogue(args) {
     return { content: [{ type: "text", text: "Added dialogue." }] };
 }
 
-export async function addChoice(args) {
+export async function addChoice(args: AddChoiceArgs): Promise<HandlerResponse> {
     const { projectPath, mapId, eventId, pageIndex, insertPosition, options, cancelType = -1 } = args;
     await validateProjectPath(projectPath);
 
@@ -37,7 +49,7 @@ export async function addChoice(args) {
     const list = getEventPageList(mapData, eventId, pageIndex, mapId);
     const pos = insertPosition === -1 ? list.length - 1 : insertPosition;
 
-    const cmds = [];
+    const cmds: EventCommand[] = [];
     // Show Choices
     cmds.push({ code: EVENT_CODES.SHOW_CHOICES, indent: 0, parameters: [options, cancelType] });
 
@@ -56,7 +68,7 @@ export async function addChoice(args) {
     return { content: [{ type: "text", text: `Added choice with ${options.length} options.` }] };
 }
 
-export async function showPicture(args) {
+export async function showPicture(args: ShowPictureArgs): Promise<HandlerResponse> {
     const { projectPath, mapId, eventId, pageIndex, insertPosition, pictureId = 1, pictureName, origin = 0, x = 0, y = 0 } = args;
     await validateProjectPath(projectPath);
 
@@ -66,7 +78,7 @@ export async function showPicture(args) {
 
     // Show Picture
     // parameters: [pictureId, pictureName, origin, x, y, scaleX, scaleY, opacity, blendMode]
-    const cmd = {
+    const cmd: EventCommand = {
         code: EVENT_CODES.SHOW_PICTURE,
         indent: 0,
         parameters: [pictureId, pictureName, origin, x, y, 100, 100, 255, 0]
@@ -78,7 +90,7 @@ export async function showPicture(args) {
     return { content: [{ type: "text", text: `Added show picture command for "${pictureName}" (ID: ${pictureId}).` }] };
 }
 
-export async function addLoop(args) {
+export async function addLoop(args: EventCommandArgs): Promise<HandlerResponse> {
     const { projectPath, mapId, eventId, pageIndex, insertPosition } = args;
     await validateProjectPath(projectPath);
 
@@ -87,8 +99,8 @@ export async function addLoop(args) {
 
     const pos = insertPosition === -1 ? list.length - 1 : insertPosition;
 
-    const loopCmd = { code: EVENT_CODES.LOOP, indent: 0, parameters: [] };
-    const repeatCmd = { code: EVENT_CODES.LOOP_REPEAT, indent: 0, parameters: [] };
+    const loopCmd: EventCommand = { code: EVENT_CODES.LOOP, indent: 0, parameters: [] };
+    const repeatCmd: EventCommand = { code: EVENT_CODES.LOOP_REPEAT, indent: 0, parameters: [] };
 
     list.splice(pos, 0, loopCmd, repeatCmd);
 
@@ -99,7 +111,7 @@ export async function addLoop(args) {
     };
 }
 
-export async function addBreakLoop(args) {
+export async function addBreakLoop(args: EventCommandArgs): Promise<HandlerResponse> {
     const { projectPath, mapId, eventId, pageIndex, insertPosition } = args;
     await validateProjectPath(projectPath);
 
@@ -107,7 +119,7 @@ export async function addBreakLoop(args) {
     const list = getEventPageList(mapData, eventId, pageIndex, mapId);
 
     const pos = insertPosition === -1 ? list.length - 1 : insertPosition;
-    const cmd = { code: EVENT_CODES.BREAK_LOOP, indent: 0, parameters: [] };
+    const cmd: EventCommand = { code: EVENT_CODES.BREAK_LOOP, indent: 0, parameters: [] };
 
     list.splice(pos, 0, cmd);
 
@@ -118,7 +130,7 @@ export async function addBreakLoop(args) {
     };
 }
 
-export async function addConditionalBranch(args) {
+export async function addConditionalBranch(args: AddConditionalBranchArgs): Promise<HandlerResponse> {
     const { projectPath, mapId, eventId, pageIndex, insertPosition, condition, includeElse = true } = args;
     await validateProjectPath(projectPath);
 
@@ -135,9 +147,9 @@ export async function addConditionalBranch(args) {
         condition.class || 0
     ];
 
-    const branchStart = { code: EVENT_CODES.CONDITIONAL_BRANCH, indent: 0, parameters: params };
-    const elseCmd = { code: EVENT_CODES.CONDITIONAL_ELSE, indent: 0, parameters: [] };
-    const branchEnd = { code: EVENT_CODES.CONDITIONAL_END, indent: 0, parameters: [] };
+    const branchStart: EventCommand = { code: EVENT_CODES.CONDITIONAL_BRANCH, indent: 0, parameters: params };
+    const elseCmd: EventCommand = { code: EVENT_CODES.CONDITIONAL_ELSE, indent: 0, parameters: [] };
+    const branchEnd: EventCommand = { code: EVENT_CODES.CONDITIONAL_END, indent: 0, parameters: [] };
 
     if (includeElse) {
         list.splice(pos, 0, branchStart, elseCmd, branchEnd);
@@ -152,7 +164,7 @@ export async function addConditionalBranch(args) {
     };
 }
 
-export async function deleteEventCommand(args) {
+export async function deleteEventCommand(args: DeleteEventCommandArgs): Promise<HandlerResponse> {
     const { projectPath, mapId, eventId, pageIndex, commandIndex } = args;
     await validateProjectPath(projectPath);
 
@@ -172,7 +184,7 @@ export async function deleteEventCommand(args) {
     };
 }
 
-export async function updateEventCommand(args) {
+export async function updateEventCommand(args: UpdateEventCommandArgs): Promise<HandlerResponse> {
     const { projectPath, mapId, eventId, pageIndex, commandIndex, newCommand } = args;
     await validateProjectPath(projectPath);
 
@@ -192,22 +204,24 @@ export async function updateEventCommand(args) {
     };
 }
 
-export async function searchEvents(args) {
+export async function searchEvents(args: SearchEventsArgs): Promise<HandlerResponse> {
     const { projectPath, query } = args;
     await validateProjectPath(projectPath);
 
-    const matches = [];
+    const matches: Array<Record<string, unknown>> = [];
     const dataDir = path.join(projectPath, "data");
 
-    const searchInList = (list, sourceName) => {
+    const searchInList = (list: Array<Record<string, unknown> | null> | undefined, sourceName: string): void => {
         if (!list) return;
         list.forEach((ev) => {
             if (!ev) return;
-            const eventName = ev.name || `Event ${ev.id}`;
-            if (ev.pages) {
-                ev.pages.forEach((page, pageIndex) => {
-                    if (page.list) {
-                        page.list.forEach((cmd, cmdIndex) => {
+            const eventName = (ev.name as string | undefined) || `Event ${ev.id as number}`;
+            const pages = ev.pages as Array<Record<string, unknown>> | undefined;
+            if (pages) {
+                pages.forEach((page, pageIndex) => {
+                    const list = page.list as Array<EventCommand> | undefined;
+                    if (list) {
+                        list.forEach((cmd, cmdIndex) => {
                             const paramStr = JSON.stringify(cmd.parameters);
                             const codeStr = cmd.code.toString();
                             if (paramStr.includes(query) || (query === codeStr)) {
@@ -230,24 +244,33 @@ export async function searchEvents(args) {
 
     try {
         const commonEventsPath = path.join(dataDir, "CommonEvents.json");
-        const commonEvents = JSON.parse(await fs.readFile(commonEventsPath, "utf-8"));
+        const commonEvents = JSON.parse(await fs.readFile(commonEventsPath, "utf-8")) as Array<Record<string, unknown> | null>;
         searchInList(commonEvents, "CommonEvents");
-    } catch (e) { }
+    } catch (e: unknown) {
+        // Ignore missing file
+    }
 
     try {
         const mapInfosPath = path.join(dataDir, "MapInfos.json");
-        const mapInfos = JSON.parse(await fs.readFile(mapInfosPath, "utf-8"));
+        const mapInfos = JSON.parse(await fs.readFile(mapInfosPath, "utf-8")) as Array<Record<string, unknown> | null>;
         for (const mapInfo of mapInfos) {
             if (!mapInfo) continue;
-            const mapId = mapInfo.id.toString().padStart(3, "0");
+            const mapId = (mapInfo.id as number).toString().padStart(3, "0");
             const mapFilename = `Map${mapId}.json`;
             const mapPath = path.join(dataDir, mapFilename);
             try {
-                const mapData = JSON.parse(await fs.readFile(mapPath, "utf-8"));
-                searchInList(mapData.events, `Map ${mapInfo.id}: ${mapInfo.name}`);
-            } catch (e) { }
+                const mapData = JSON.parse(await fs.readFile(mapPath, "utf-8")) as Record<string, unknown>;
+                const events = mapData.events as Record<string, Record<string, unknown> | null> | undefined;
+                if (events) {
+                    searchInList(Object.values(events), `Map ${mapInfo.id}: ${mapInfo.name as string}`);
+                }
+            } catch (e: unknown) {
+                // Ignore missing file
+            }
         }
-    } catch (e) { }
+    } catch (e: unknown) {
+        // Ignore missing file
+    }
 
     return {
         content: [{ type: "text", text: JSON.stringify(matches, null, 2) }],
