@@ -47,7 +47,7 @@ describe('Logger', () => {
 
   describe('info', () => {
     it('should log info message', async () => {
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       await Logger.info('Test info message');
       
       expect(consoleSpy).toHaveBeenCalled();
@@ -146,7 +146,7 @@ describe('Logger', () => {
   describe('child', () => {
     it('should create a child logger with prefix', async () => {
       const childLogger = Logger.child('TEST');
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
       
       await childLogger.info('Test message');
       
