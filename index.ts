@@ -134,7 +134,7 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
     throw new Error(`Unknown resource: ${uri}`);
 });
 
-// List Tools handler (imports tool schemas from ./toolSchemas.js)
+// List Tools handler (imports tool schemas from ./toolSchemas.ts)
 import { toolSchemas } from "./toolSchemas.js";
 
 server.setRequestHandler(ListToolsRequestSchema, async () => {

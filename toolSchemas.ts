@@ -1,5 +1,22 @@
-// Tool schemas for all 22 tools
-export const toolSchemas = [
+// Tool schemas for all 26 tools
+
+type ToolSchema = {
+    name: string;
+    description: string;
+    inputSchema: {
+        type: "object";
+        properties: Record<string, {
+            type: string;
+            description?: string;
+            default?: unknown;
+            enum?: string[];
+            items?: { type: string };
+        }>;
+        required: string[];
+    };
+};
+
+export const toolSchemas: ToolSchema[] = [
     {
         name: "get_project_info",
         description: "Get basic information about the RPG Maker MZ project from System.json",
