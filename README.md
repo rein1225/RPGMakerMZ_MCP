@@ -19,7 +19,49 @@
 
 ## セットアップ
 
-### 方法1: npmパッケージからインストール（推奨）
+### 方法1: ソースコードから直接実行（開発者向け・推奨）
+
+npmパッケージをインストールする必要はありません。リポジトリをクローンして依存関係をインストールするだけで使用できます。
+
+#### 1. リポジトリのクローン
+
+```bash
+git clone https://github.com/rein1225/RPGMakerMZ_MCP.git
+cd RPGMakerMZ_MCP
+```
+
+#### 2. 依存関係のインストール
+
+```bash
+npm install
+```
+
+これだけで準備完了です。TypeScriptファイルを直接実行できます。
+
+#### 3. MCP設定ファイルの設定
+
+Antigravityの設定ファイル（`mcp_config.json`）に以下を追加：
+
+```json
+{
+  "mcpServers": {
+    "rpg-maker-mz": {
+      "command": "npx",
+      "args": ["tsx", "C:/path/to/RPGMakerMZ_MCP/index.ts"],
+      "cwd": "C:/path/to/RPGMakerMZ_MCP"
+    }
+  }
+}
+```
+
+> ⚠️ **重要**: 
+> - `C:/path/to/RPGMakerMZ_MCP` を実際のプロジェクトパスに置き換えてください
+> - Windowsでは`C:/`のようにスラッシュ（`/`）を使用し、バックスラッシュ（`\`）は使用しないでください
+> - `npx tsx`を使用することで、TypeScriptファイルを直接実行できます（ビルド不要）
+
+### 方法2: npmパッケージからインストール（配布用）
+
+npmパッケージとして公開されているので、グローバルインストールも可能です：
 
 ```bash
 npm install -g @rein1225/rpg-maker-mz-mcp
@@ -37,53 +79,9 @@ npm install -g @rein1225/rpg-maker-mz-mcp
 }
 ```
 
-### 方法2: ソースコードからインストール
+### 方法3: ビルドしてから実行（オプション）
 
-#### 1. リポジトリのクローン
-
-```bash
-git clone https://github.com/rein1225/RPGMakerMZ_MCP.git
-cd RPGMakerMZ_MCP
-```
-
-#### 2. 依存関係のインストール
-
-```bash
-npm install
-```
-
-#### 3. TypeScriptビルド（オプション）
-
-本プロジェクトはTypeScript化されていますが、実行時には`.ts`ファイルを直接使用できます（`tsx`や`ts-node`を使用する場合）。
-ビルドが必要な場合は以下のコマンドを実行してください：
-
-```bash
-npm run build  # 全ファイルをビルド（dist/に出力）
-```
-
-詳細な移行計画は `docs/typescript-plan.md` を参照。
-
-### 3. MCPサーバーの起動
-
-Antigravityの設定ファイル（`mcp_config.json`）に以下を追加：
-
-**方法1: tsxを使用（推奨）**
-
-```json
-{
-  "mcpServers": {
-    "rpg-maker-mz": {
-      "command": "npx",
-      "args": ["tsx", "C:/path/to/RPGMakerMZ_MCP/index.ts"],
-      "cwd": "C:/path/to/RPGMakerMZ_MCP"
-    }
-  }
-}
-```
-
-> ⚠️ **重要**: パスは実際のプロジェクトパスに置き換えてください。Windowsでは`C:/`のようにスラッシュを使用し、バックスラッシュは使用しないでください。
-
-**方法2: ビルドしてから実行**
+TypeScriptをJavaScriptにコンパイルしてから実行することも可能です：
 
 ```bash
 npm run build
@@ -103,7 +101,7 @@ npm run build
 }
 ```
 
-> ⚠️ **重要**: パスは実際のプロジェクトパスに置き換えてください。Windowsでは`C:/`のようにスラッシュを使用し、バックスラッシュは使用しないでください。
+> 💡 **推奨**: 開発・自分で使う場合は**方法1**（ソースコードから直接実行）が最も簡単です。ビルドは不要で、コードを編集してすぐに試せます。
 
 ---
 
