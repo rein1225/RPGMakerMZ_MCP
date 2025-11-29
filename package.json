@@ -1,6 +1,6 @@
 {
   "name": "@rein634/rpg-maker-mz-mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "MCP server for RPG Maker MZ game development automation",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

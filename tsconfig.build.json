@@ -11,6 +11,7 @@
     "index.ts",
     "handlers/**/*.ts",
     "utils/**/*.ts",
+    "utils/**/*.js",
     "types/**/*.ts",
     "schemas/**/*.js",
     "resources/**/*.json"
