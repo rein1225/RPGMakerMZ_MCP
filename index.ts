@@ -51,7 +51,8 @@ const server = new Server(
 );
 
 // Tool mapping
-const toolMap: Record<string, (args: unknown) => Promise<unknown>> = {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const toolMap: Record<string, (args: any) => Promise<any>> = {
   // Project tools
   "get_project_info": projectHandlers.getProjectInfo,
   "list_data_files": projectHandlers.listDataFiles,
@@ -152,7 +153,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         if (!handler) {
             throw new Error(`Unknown tool: ${name}`);
         }
-        return await handler(args) as unknown;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return await handler(args) as any;
     } catch (error: unknown) {
         const err = error as Error;
         console.error(`Error executing tool ${name}:`, error);
