@@ -51,8 +51,7 @@ const server = new Server(
 );
 
 // Tool mapping
-type ToolHandler = (args: unknown) => Promise<unknown>;
-const toolMap: Record<string, ToolHandler> = {
+const toolMap: Record<string, (args: unknown) => Promise<unknown>> = {
   // Project tools
   "get_project_info": projectHandlers.getProjectInfo,
   "list_data_files": projectHandlers.listDataFiles,
@@ -153,7 +152,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         if (!handler) {
             throw new Error(`Unknown tool: ${name}`);
         }
-        return await handler(args);
+        return await handler(args) as unknown;
     } catch (error: unknown) {
         const err = error as Error;
         console.error(`Error executing tool ${name}:`, error);
