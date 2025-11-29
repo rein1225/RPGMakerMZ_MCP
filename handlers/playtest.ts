@@ -17,6 +17,7 @@ type RunPlaytestArgs = ProjectArgs & {
     autoClose?: boolean;
     debugPort?: number;
     startNewGame?: boolean;
+    postLaunchScript?: string;
 };
 type InspectGameStateArgs = { port?: number; script: string };
 
@@ -26,7 +27,8 @@ export async function runPlaytest(args: RunPlaytestArgs): Promise<HandlerRespons
         duration = DEFAULTS.TIMEOUT,
         autoClose = DEFAULTS.AUTO_CLOSE,
         debugPort = DEFAULTS.PORT,
-        startNewGame = DEFAULTS.START_NEW_GAME
+        startNewGame = DEFAULTS.START_NEW_GAME,
+        postLaunchScript
     } = args;
 
     await validateProjectPath(projectPath);
@@ -45,7 +47,7 @@ export async function runPlaytest(args: RunPlaytestArgs): Promise<HandlerRespons
     let server: Server | undefined;
     let browser: Browser | undefined;
     const result: HandlerResponse = { content: [] };
-    
+
     // Helper function to convert HandlerContent to StandardHandlerContent
     const convertContent = (content: HandlerContent[]): StandardHandlerContent[] => {
         return content.map(c => {
@@ -109,7 +111,7 @@ export async function runPlaytest(args: RunPlaytestArgs): Promise<HandlerRespons
             await page.goto(`http://localhost:${port}/index.html`);
 
             // Screenshot logic
-            const screenshotContent = await captureGameScreenshot(page, startNewGame, duration, startTime);
+            const screenshotContent = await captureGameScreenshot(page, startNewGame, duration, startTime, postLaunchScript);
             result.content.push(...convertContent(screenshotContent));
             capturedViaPuppeteer = true;
 
@@ -143,7 +145,7 @@ export async function runPlaytest(args: RunPlaytestArgs): Promise<HandlerRespons
                 const page = pages[0];
 
                 if (page) {
-                    const screenshotContent = await captureGameScreenshot(page, startNewGame, duration, startTime);
+                    const screenshotContent = await captureGameScreenshot(page, startNewGame, duration, startTime, postLaunchScript);
                     result.content.push(...convertContent(screenshotContent));
                     capturedViaPuppeteer = true;
                 }
@@ -285,7 +287,7 @@ export async function inspectGameState(args: InspectGameStateArgs): Promise<Hand
                     return func();
                 } catch (e) {
                     const win = globalThis as any;
-                    
+
                     if (script.startsWith('$gameVariables.value(')) {
                         const match = script.match(/\$gameVariables\.value\((\d+)\)/);
                         if (match && win.$gameVariables) {
@@ -325,7 +327,7 @@ export async function inspectGameState(args: InspectGameStateArgs): Promise<Hand
                     if (script === 'SceneManager._scene.constructor.name' && win.SceneManager?._scene) {
                         return win.SceneManager._scene.constructor.name;
                     }
-                    
+
                     throw new Error(`Failed to evaluate script: ${script}. Error: ${e instanceof Error ? e.message : String(e)}`);
                 }
             }

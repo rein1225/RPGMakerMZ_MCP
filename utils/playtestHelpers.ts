@@ -11,7 +11,8 @@ export async function captureGameScreenshot(
     page: Page,
     startNewGame: boolean,
     duration: number,
-    startTime: number
+    startTime: number,
+    postLaunchScript?: string
 ): Promise<HandlerContent[]> {
     const content: HandlerContent[] = [];
     try {
@@ -26,10 +27,10 @@ export async function captureGameScreenshot(
                     return win.SceneManager && win.SceneManager._scene && win.SceneManager._scene.constructor.name === 'Scene_Title';
                 }, { timeout: 10000 });
                 await Logger.debug("Scene_Title detected.");
-                await page.evaluate(() => { 
+                await page.evaluate(() => {
                     const win = globalThis as any;
-                    win.DataManager.setupNewGame(); 
-                    win.SceneManager.goto(win.Scene_Map); 
+                    win.DataManager.setupNewGame();
+                    win.SceneManager.goto(win.Scene_Map);
                 });
                 await Logger.debug("New Game command sent.");
             } catch (e: unknown) {
@@ -51,6 +52,25 @@ export async function captureGameScreenshot(
             await Logger.debug("Scene ready check passed.");
         } catch (e: unknown) {
             await Logger.debug("Scene ready check timed out.");
+        }
+
+        if (postLaunchScript) {
+            await Logger.debug(`Executing post-launch script: ${postLaunchScript}`);
+            try {
+                await page.evaluate((script) => {
+                    try {
+                        const func = new Function(script);
+                        func();
+                    } catch (e) {
+                        console.error("Post-launch script error:", e);
+                        throw e;
+                    }
+                }, postLaunchScript);
+                await Logger.debug("Post-launch script executed.");
+            } catch (e: unknown) {
+                const err = e as Error;
+                await Logger.error(`Post-launch script failed: ${err.message}`, err);
+            }
         }
 
         await sleep(1000);
@@ -77,4 +97,3 @@ export async function captureGameScreenshot(
     }
     return content;
 }
-

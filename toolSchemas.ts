@@ -135,9 +135,9 @@ export const toolSchemas: ToolSchema[] = [
             type: "object",
             properties: {
                 projectPath: { type: "string" },
-                plugins: { 
-                    type: "array", 
-                    items: { 
+                plugins: {
+                    type: "array",
+                    items: {
                         type: "object",
                         properties: {
                             name: { type: "string" },
@@ -230,7 +230,7 @@ export const toolSchemas: ToolSchema[] = [
                 eventId: { type: "number" },
                 pageIndex: { type: "number" },
                 insertPosition: { type: "number" },
-                condition: { 
+                condition: {
                     type: "object",
                     properties: {
                         code: { type: "number", description: "Condition code" },
@@ -408,7 +408,8 @@ export const toolSchemas: ToolSchema[] = [
                 duration: { type: "number", default: 5000, description: "Time to wait before screenshot (ms)" },
                 autoClose: { type: "boolean", default: false, description: "Automatically close game after screenshot" },
                 debugPort: { type: "number", default: 9222, description: "Remote debugging port for Puppeteer" },
-                startNewGame: { type: "boolean", default: false, description: "Skip title and start new game" }
+                startNewGame: { type: "boolean", default: false, description: "Skip title and start new game" },
+                postLaunchScript: { type: "string", description: "JavaScript code to execute after game launch (e.g. input injection)" }
             },
             required: ["projectPath"]
         }
