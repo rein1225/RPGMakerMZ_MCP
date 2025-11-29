@@ -2,12 +2,24 @@ import fs from "fs/promises";
 import path from "path";
 import { validateProjectPath, getFilesRecursively } from "../utils/validation.js";
 import { Errors } from "../utils/errors.js";
-export async function getProjectInfo(args) {
+
+type HandlerContent = { type: "text"; text: string };
+type HandlerResponse = { content: HandlerContent[] };
+
+type ProjectArgs = { projectPath: string };
+type DataFileArgs = ProjectArgs & { filename: string };
+type WriteDataFileArgs = DataFileArgs & { content: string };
+type AssetType = "img" | "audio" | "all";
+type ListAssetsArgs = ProjectArgs & { assetType?: AssetType };
+
+export async function getProjectInfo(args: ProjectArgs): Promise<HandlerResponse> {
     const { projectPath } = args;
     await validateProjectPath(projectPath);
+
     const systemPath = path.join(projectPath, "data", "System.json");
     const content = await fs.readFile(systemPath, "utf-8");
-    const systemData = JSON.parse(content);
+    const systemData = JSON.parse(content) as Record<string, unknown>;
+
     return {
         content: [
             {
@@ -22,12 +34,15 @@ export async function getProjectInfo(args) {
         ],
     };
 }
-export async function listDataFiles(args) {
+
+export async function listDataFiles(args: ProjectArgs): Promise<HandlerResponse> {
     const { projectPath } = args;
     await validateProjectPath(projectPath);
+
     const dataDir = path.join(projectPath, "data");
     const files = await fs.readdir(dataDir);
     const jsonFiles = files.filter(f => f.endsWith(".json"));
+
     return {
         content: [
             {
@@ -37,19 +52,25 @@ export async function listDataFiles(args) {
         ],
     };
 }
-export async function readDataFile(args) {
+
+export async function readDataFile(args: DataFileArgs): Promise<HandlerResponse> {
     const { projectPath, filename } = args;
     await validateProjectPath(projectPath);
+
     if (!filename.endsWith(".json")) {
         throw new Error("Only .json files can be read");
     }
+
     const filePath = path.join(projectPath, "data", filename);
     const resolvedPath = path.resolve(filePath);
     const dataDir = path.resolve(projectPath, "data");
+
     if (!resolvedPath.startsWith(dataDir)) {
         throw Errors.assetPathInvalid(filename);
     }
+
     const content = await fs.readFile(resolvedPath, "utf-8");
+
     return {
         content: [
             {
@@ -59,20 +80,27 @@ export async function readDataFile(args) {
         ],
     };
 }
-export async function writeDataFile(args) {
+
+export async function writeDataFile(args: WriteDataFileArgs): Promise<HandlerResponse> {
     const { projectPath, filename, content } = args;
     await validateProjectPath(projectPath);
+
     if (!filename.endsWith(".json")) {
         throw new Error("Only .json files can be written");
     }
+
     JSON.parse(content);
+
     const filePath = path.join(projectPath, "data", filename);
     const resolvedPath = path.resolve(filePath);
     const dataDir = path.resolve(projectPath, "data");
+
     if (!resolvedPath.startsWith(dataDir)) {
         throw Errors.assetPathInvalid(filename);
     }
+
     await fs.writeFile(resolvedPath, content, "utf-8");
+
     return {
         content: [
             {
@@ -82,32 +110,35 @@ export async function writeDataFile(args) {
         ],
     };
 }
-export async function listAssets(args) {
+
+export async function listAssets(args: ListAssetsArgs): Promise<HandlerResponse> {
     const { projectPath, assetType = "all" } = args;
     await validateProjectPath(projectPath);
-    const results = {};
+
+    const results: Record<string, unknown> = {};
+
     if (assetType === "img" || assetType === "all") {
         const imgDir = path.join(projectPath, "img");
         try {
             const files = await getFilesRecursively(imgDir);
             results.img = files.map(f => path.relative(projectPath, f).replace(/\\/g, "/"));
-        }
-        catch (e) {
+        } catch (e) {
             const reason = e instanceof Error ? e.message : String(e);
             results.img = [`Error reading img directory: ${reason}`];
         }
     }
+
     if (assetType === "audio" || assetType === "all") {
         const audioDir = path.join(projectPath, "audio");
         try {
             const files = await getFilesRecursively(audioDir);
             results.audio = files.map(f => path.relative(projectPath, f).replace(/\\/g, "/"));
-        }
-        catch (e) {
+        } catch (e) {
             const reason = e instanceof Error ? e.message : String(e);
             results.audio = [`Error reading audio directory: ${reason}`];
         }
     }
+
     return {
         content: [
             {
@@ -117,25 +148,27 @@ export async function listAssets(args) {
         ],
     };
 }
-export async function checkAssetsIntegrity(args) {
+
+export async function checkAssetsIntegrity(args: ProjectArgs): Promise<HandlerResponse> {
     const { projectPath } = args;
     await validateProjectPath(projectPath);
-    const issues = [];
+
+    const issues: Array<Record<string, unknown>> = [];
     const dataDir = path.join(projectPath, "data");
-    const checkImageReferences = async (dataFile, propertyName) => {
+
+    const checkImageReferences = async (dataFile: string, propertyName: string): Promise<void> => {
         try {
             const filePath = path.join(dataDir, dataFile);
-            const data = JSON.parse(await fs.readFile(filePath, "utf-8"));
+            const data = JSON.parse(await fs.readFile(filePath, "utf-8")) as Array<Record<string, any>>;
+
             for (const item of data) {
-                if (!item)
-                    continue;
+                if (!item) continue;
                 const imageName = item[propertyName];
                 if (imageName && imageName !== "") {
                     const imgPath = path.join(projectPath, "img", "characters", `${imageName}.png`);
                     try {
                         await fs.access(imgPath);
-                    }
-                    catch {
+                    } catch {
                         issues.push({
                             type: "missing_image",
                             file: dataFile,
@@ -147,16 +180,18 @@ export async function checkAssetsIntegrity(args) {
                     }
                 }
             }
-        }
-        catch {
+        } catch {
             // Ignore missing files
         }
     };
+
     await checkImageReferences("Actors.json", "characterName");
+
     try {
         const mapInfosPath = path.join(dataDir, "MapInfos.json");
-        const mapInfos = JSON.parse(await fs.readFile(mapInfosPath, "utf-8"));
+        const mapInfos = JSON.parse(await fs.readFile(mapInfosPath, "utf-8")) as Record<number, unknown>;
         const mapFiles = await fs.readdir(dataDir);
+
         for (const file of mapFiles) {
             const match = file.match(/^Map(\d{3})\.json$/);
             if (match) {
@@ -170,17 +205,16 @@ export async function checkAssetsIntegrity(args) {
                 }
             }
         }
-    }
-    catch {
+    } catch {
         // Ignore errors
     }
+
     return {
         content: [{
-                type: "text",
-                text: issues.length === 0
-                    ? "No asset integrity issues found."
-                    : `Found ${issues.length} issue(s):\n${JSON.stringify(issues, null, 2)}`
-            }]
+            type: "text",
+            text: issues.length === 0
+                ? "No asset integrity issues found."
+                : `Found ${issues.length} issue(s):\n${JSON.stringify(issues, null, 2)}`
+        }]
     };
 }
-//# sourceMappingURL=project.js.map

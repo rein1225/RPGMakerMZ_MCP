@@ -22,6 +22,16 @@
 npm install
 ```
 
+### 1.5 TypeScriptユーティリティの再ビルド
+
+一部ユーティリティはTypeScript化されているため、変更後は下記のコマンドで `.ts` → `.js` を再生成してください。
+
+```bash
+npm run build:utils
+```
+
+詳細な移行計画は `docs/typescript-plan.md` を参照。
+
 ### 2. MCPサーバーの起動
 
 Antigravityの設定ファイル（`mcp_config.json`）に以下を追加：
@@ -243,6 +253,20 @@ Antigravityの設定ファイル（`mcp_config.json`）に以下を追加：
 `run_playtest`で`debugPort`を指定することで、Puppeteerを使用してゲームのUI操作やシナリオテストを自動化できます。
 詳細なAPI仕様は `docs/API_REFERENCE.md` を参照してください。
 
+### E2Eテストの実行方法
+自動化シナリオ (`automation/test_*.js`) は本番ゲーム環境を前提とした手動実行専用のテストです。CI では実行されません。
+
+```bash
+# 代表的なシナリオをまとめて走らせる
+npm run test:e2e
+
+# もしくは個別に実行
+node automation/test_full_suite.js
+node automation/test_add_dialogue.js
+```
+
+> ⚠️ ブラウザ操作やGame.exe起動を伴うため、**信頼できるローカル環境のみ**で実行してください。
+
 ---
 
 ## MCP Resources
@@ -344,6 +368,19 @@ MIT License
 - `run_playtest` に `startNewGame` パラメータを追加
 
 ### v1.0.0 (2025-11-23)
-- 全16ツール実装完了
+- 初期リリース（当時は全16ツール構成）
 - MCP Resources実装
 - Zod Validation実装
+
+---
+
+## 追加機能ロードマップ
+
+以下の高優先度機能は別途仕様を策定し、順次実装予定です。詳細は `docs/feature-roadmap.md` を参照してください。
+
+| 優先度 | 機能 |
+| --- | --- |
+| 高 | `undo` 機能（JSONバックアップ / ロールバック） |
+| 中 | `validate_project` ツール（整合性チェック一括実行） |
+| 中 | バッチ処理（複数コマンドを単一リクエストで実行） |
+| 低 | WebSocket通知（リアルタイムログ / 状態通知） |

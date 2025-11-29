@@ -123,5 +123,93 @@ export interface ILogger {
   debug(message: string): Promise<void>;
 }
 
+/**
+ * Actor structure
+ */
+export interface Actor {
+  id: number;
+  name: string;
+  classId: number;
+  level: number;
+  characterName: string;
+  characterIndex: number;
+  faceName: string;
+  faceIndex: number;
+  traits: unknown[];
+  initialLevel: number;
+  maxLevel: number;
+  nickname: string;
+  note: string;
+  profile: string;
+}
+
+/**
+ * Item structure
+ */
+export interface Item {
+  id: number;
+  name: string;
+  iconIndex: number;
+  description: string;
+  price: number;
+  consumable: boolean;
+  scope: number;
+  occasion: number;
+  speed: number;
+  successRate: number;
+  repeats: number;
+  tpGain: number;
+  hitType: number;
+  animationId: number;
+  damage: {
+    type: number;
+    elementId: number;
+    formula: string;
+    variance: number;
+  };
+  effects: unknown[];
+  note: string;
+}
+
+/**
+ * Skill structure
+ */
+export interface Skill {
+  id: number;
+  name: string;
+  iconIndex: number;
+  description: string;
+  mpCost: number;
+  tpCost: number;
+  scope: number;
+  occasion: number;
+  speed: number;
+  successRate: number;
+  repeats: number;
+  tpGain: number;
+  hitType: number;
+  animationId: number;
+  damage: {
+    type: number;
+    elementId: number;
+    formula: string;
+    variance: number;
+  };
+  effects: unknown[];
+  note: string;
+  message1: string;
+  message2: string;
+  requiredWtypeId1: number;
+  requiredWtypeId2: number;
+  stypeId: number;
+}
+
+/**
+ * Handler response type
+ */
+export type HandlerContent = { type: "text"; text: string };
+export type HandlerResponse = { content: HandlerContent[] };
+
+
 
 

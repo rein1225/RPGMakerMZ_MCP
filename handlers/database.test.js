@@ -1,24 +1,42 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs/promises';
 import path from 'path';
+import os from 'os';
 import { fileURLToPath } from 'url';
 import { addActor, addItem, addSkill } from './database.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const testProjectPath = path.join(__dirname, '../test_project');
+const sourceProjectPath = path.join(__dirname, '../test_project');
+
+let tempRoot;
+let testProjectPath;
+
+async function setupTempProject() {
+  tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'mz-project-'));
+  testProjectPath = path.join(tempRoot, 'project');
+  await fs.cp(sourceProjectPath, testProjectPath, { recursive: true });
+}
+
+async function cleanupTempProject() {
+  if (tempRoot) {
+    await fs.rm(tempRoot, { recursive: true, force: true });
+    tempRoot = undefined;
+    testProjectPath = undefined;
+  }
+}
 
 describe('database', () => {
+  beforeEach(async () => {
+    await setupTempProject();
+  });
+
+  afterEach(async () => {
+    await cleanupTempProject();
+  });
+
   describe('addActor', () => {
-    let actorsPath;
-    let originalActors;
-
-    beforeEach(async () => {
-      actorsPath = path.join(testProjectPath, 'data', 'Actors.json');
-      const content = await fs.readFile(actorsPath, 'utf-8');
-      originalActors = content;
-    });
-
     it('should add a new actor with required parameters', async () => {
+      const actorsPath = path.join(testProjectPath, 'data', 'Actors.json');
       const result = await addActor({
         projectPath: testProjectPath,
         name: 'テストヒーロー'
@@ -34,12 +52,10 @@ describe('database', () => {
       expect(newActor.classId).toBe(1); // default
       expect(newActor.initialLevel).toBe(1); // default
       expect(newActor.maxLevel).toBe(99); // default
-
-      // Restore original
-      await fs.writeFile(actorsPath, originalActors, 'utf-8');
     });
 
     it('should add actor with custom parameters', async () => {
+      const actorsPath = path.join(testProjectPath, 'data', 'Actors.json');
       const result = await addActor({
         projectPath: testProjectPath,
         name: 'カスタムヒーロー',
@@ -53,9 +69,6 @@ describe('database', () => {
       expect(newActor.classId).toBe(2);
       expect(newActor.initialLevel).toBe(5);
       expect(newActor.maxLevel).toBe(50);
-
-      // Restore original
-      await fs.writeFile(actorsPath, originalActors, 'utf-8');
     });
 
     it('should throw error for invalid project path', async () => {
@@ -67,16 +80,8 @@ describe('database', () => {
   });
 
   describe('addItem', () => {
-    let itemsPath;
-    let originalItems;
-
-    beforeEach(async () => {
-      itemsPath = path.join(testProjectPath, 'data', 'Items.json');
-      const content = await fs.readFile(itemsPath, 'utf-8');
-      originalItems = content;
-    });
-
     it('should add a new item with default parameters', async () => {
+      const itemsPath = path.join(testProjectPath, 'data', 'Items.json');
       const result = await addItem({
         projectPath: testProjectPath,
         name: 'テストポーション'
@@ -89,12 +94,10 @@ describe('database', () => {
       expect(newItem).toBeDefined();
       expect(newItem.price).toBe(0);
       expect(newItem.consumable).toBe(true);
-
-      // Restore original
-      await fs.writeFile(itemsPath, originalItems, 'utf-8');
     });
 
     it('should add item with custom price and consumable flag', async () => {
+      const itemsPath = path.join(testProjectPath, 'data', 'Items.json');
       const result = await addItem({
         projectPath: testProjectPath,
         name: 'エリクサー',
@@ -106,23 +109,12 @@ describe('database', () => {
       const newItem = items.find(i => i && i.name === 'エリクサー');
       expect(newItem.price).toBe(500);
       expect(newItem.consumable).toBe(false);
-
-      // Restore original
-      await fs.writeFile(itemsPath, originalItems, 'utf-8');
     });
   });
 
   describe('addSkill', () => {
-    let skillsPath;
-    let originalSkills;
-
-    beforeEach(async () => {
-      skillsPath = path.join(testProjectPath, 'data', 'Skills.json');
-      const content = await fs.readFile(skillsPath, 'utf-8');
-      originalSkills = content;
-    });
-
     it('should add a new skill with default parameters', async () => {
+      const skillsPath = path.join(testProjectPath, 'data', 'Skills.json');
       const result = await addSkill({
         projectPath: testProjectPath,
         name: 'ファイア'
@@ -135,12 +127,10 @@ describe('database', () => {
       expect(newSkill).toBeDefined();
       expect(newSkill.mpCost).toBe(0);
       expect(newSkill.tpCost).toBe(0);
-
-      // Restore original
-      await fs.writeFile(skillsPath, originalSkills, 'utf-8');
     });
 
     it('should add skill with custom MP and TP cost', async () => {
+      const skillsPath = path.join(testProjectPath, 'data', 'Skills.json');
       const result = await addSkill({
         projectPath: testProjectPath,
         name: 'メガフレア',
@@ -152,9 +142,6 @@ describe('database', () => {
       const newSkill = skills.find(s => s && s.name === 'メガフレア');
       expect(newSkill.mpCost).toBe(50);
       expect(newSkill.tpCost).toBe(30);
-
-      // Restore original
-      await fs.writeFile(skillsPath, originalSkills, 'utf-8');
     });
   });
 });

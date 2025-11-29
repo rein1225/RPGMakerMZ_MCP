@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import fs from 'fs/promises';
 import path from 'path';
+import os from 'os';
 import { fileURLToPath } from 'url';
 import { loadMapData, saveMapData, getEventPageList } from './mapHelpers.js';
 
@@ -27,32 +28,34 @@ describe('mapHelpers', () => {
 
   describe('saveMapData', () => {
     it('should save map data', async () => {
-      const originalData = await loadMapData(testProjectPath, 1);
-      const testData = { ...originalData, testProperty: 'test' };
-      
-      await saveMapData(testProjectPath, 1, testData);
-      const savedData = await loadMapData(testProjectPath, 1);
-      
-      expect(savedData.testProperty).toBe('test');
-      
-      // Restore original data
-      await saveMapData(testProjectPath, 1, originalData);
+      const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'mz-map-'));
+      const tempProject = path.join(tempRoot, 'project');
+      await fs.cp(testProjectPath, tempProject, { recursive: true });
+
+      try {
+        const originalData = await loadMapData(tempProject, 1);
+        const testData = { ...originalData, testProperty: 'test' };
+        
+        await saveMapData(tempProject, 1, testData);
+        const savedData = await loadMapData(tempProject, 1);
+        
+        expect(savedData.testProperty).toBe('test');
+      } finally {
+        await fs.rm(tempRoot, { recursive: true, force: true });
+      }
     });
   });
 
   describe('getEventPageList', () => {
     it('should get event page list for valid event and page', async () => {
       const mapData = await loadMapData(testProjectPath, 1);
-      
-      if (mapData.events && Object.keys(mapData.events).length > 0) {
-        const eventId = Object.keys(mapData.events)[0];
-        const event = mapData.events[eventId];
-        
-        if (event.pages && event.pages.length > 0) {
-          const list = getEventPageList(mapData, eventId, 0, 1);
-          expect(Array.isArray(list)).toBe(true);
-        }
-      }
+      const eventId = Object.keys(mapData.events || {}).find(id => mapData.events[id]);
+      expect(eventId).toBeDefined();
+      const event = mapData.events[eventId];
+      expect(event.pages?.length).toBeGreaterThan(0);
+
+      const list = getEventPageList(mapData, eventId, 0, 1);
+      expect(Array.isArray(list)).toBe(true);
     });
 
     it('should throw error for non-existent event', () => {
@@ -63,10 +66,9 @@ describe('mapHelpers', () => {
     it('should throw error for non-existent page', async () => {
       const mapData = await loadMapData(testProjectPath, 1);
       
-      if (mapData.events && Object.keys(mapData.events).length > 0) {
-        const eventId = Object.keys(mapData.events)[0];
-        expect(() => getEventPageList(mapData, eventId, 999, 1)).toThrow();
-      }
+      const eventId = Object.keys(mapData.events || {}).find(id => mapData.events[id]);
+      expect(eventId).toBeDefined();
+      expect(() => getEventPageList(mapData, eventId, 999, 1)).toThrow();
     });
   });
 });

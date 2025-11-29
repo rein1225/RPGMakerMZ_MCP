@@ -6,7 +6,11 @@
   "scripts": {
     "test": "vitest",
     "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit --pretty false",
+    "test:e2e": "node automation/test_full_suite.js",
+    "build:utils": "tsc -p tsconfig.utils.json",
+    "build:handlers": "tsc -p tsconfig.handlers.json"
   },
   "keywords": [],
   "author": "",
@@ -23,6 +27,7 @@
   },
   "devDependencies": {
     "vitest": "^2.1.0",
-    "@vitest/coverage-v8": "^2.1.0"
+    "@vitest/coverage-v8": "^2.1.0",
+    "typescript": "^5.5.4"
   }
 }

@@ -140,3 +140,11 @@ Launch the game and optionally take a screenshot.
 - **duration**: Wait duration in ms (default: 5000).
 - **autoClose**: Boolean (default: false).
 - **debugPort**: Port for remote debugging (e.g., 9222).
+
+### `inspect_game_state`
+Evaluate arbitrary JavaScript inside a running game via Puppeteer.
+
+> ⚠️ **Security notice:** This tool executes the provided script inside the game context. Use only in a trusted local environment and never expose this endpoint publicly.
+
+- **script**: JavaScript string to evaluate (e.g., `$gameSwitches.value(1)`).
+- **port**: Debug port to connect to (default: 9222).
