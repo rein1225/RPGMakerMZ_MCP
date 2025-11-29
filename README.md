@@ -26,13 +26,14 @@
 
 ### 3行クイックスタート
 
-1. **インストール**: `npm install -g @rein634/rpg-maker-mz-mcp`
+1. **インストール**: `npm install -D @rein634/rpg-maker-mz-mcp`
 2. **MCP設定**: クライアントの設定ファイルに以下を追加
    ```json
    {
      "mcpServers": {
        "rpg-maker-mz": {
-         "command": "rpg-maker-mz-mcp"
+         "command": "node",
+         "args": ["./node_modules/@rein634/rpg-maker-mz-mcp/dist/index.js"]
        }
      }
    }
@@ -58,7 +59,74 @@
 
 ## セットアップ
 
-### 方法1: ソースコードから直接実行（開発者向け・推奨）
+### 方法1: ローカルインストール＋node直叩き（推奨・最も安定）
+
+プロジェクトのワークスペースにローカルインストールし、nodeで直接実行する方法です。グローバルPATHやラッパースクリプトに依存しないため、どのMCPクライアントでも安定して動作します。
+
+#### 1. プロジェクトにインストール
+
+RPGツクールMZプロジェクトのルートディレクトリで実行：
+
+```bash
+npm install -D @rein634/rpg-maker-mz-mcp
+```
+
+#### 2. MCP設定ファイルの設定
+
+MCPクライアントの設定ファイル（例: `mcp_config.json`）に以下を追加：
+
+```json
+{
+  "mcpServers": {
+    "rpg-maker-mz": {
+      "command": "node",
+      "args": ["./node_modules/@rein634/rpg-maker-mz-mcp/dist/index.js"]
+    }
+  }
+}
+```
+
+> ✅ **ポイント**:
+> - ワークスペースのルートからの相対パスを使用するため、Windows / Mac / Linux 共通で動作します
+> - グローバルPATHやラッパースクリプトに依存しません
+> - MCPクライアントを再起動すると、すぐに使用できます
+
+#### 3. 起動確認
+
+MCPクライアントを起動すると、ターミナルには以下のようなログが表示されます：
+
+```text
+[2025-11-29T05:43:43.574Z] [INFO] RPG Maker MZ MCP Server running on stdio.
+```
+
+このメッセージが表示されてそのまま入力待ちになるのは**正常な動作**です。MCPクライアントからのリクエストを待っている状態です。
+
+> 💡 **ログについて**: ログは **stderr** に出力されるため、MCPプロトコルのJSON（stdout）には影響しません。コンソールにログが表示されていても、MCP的には問題ありません。
+
+### 方法2: グローバルインストール（オプション・上級者向け）
+
+グローバルにインストールして、コマンド名で直接実行する方法です。
+
+```bash
+npm install -g @rein634/rpg-maker-mz-mcp
+```
+
+インストール後、MCP設定ファイルに以下を追加：
+
+```json
+{
+  "mcpServers": {
+    "rpg-maker-mz": {
+      "command": "rpg-maker-mz-mcp"
+    }
+  }
+}
+```
+
+> ⚠️ **注意**: 一部のクライアント（特に Windows 環境）では、グローバルのラッパースクリプト（`.cmd`/`.ps1`）が正しく起動されず、`Error: calling "initialize": EOF` が出ることがあります。  
+> その場合は、上記の**方法1（ローカルインストール＋node直叩き）**を使用してください。
+
+### 方法3: ソースコードから直接実行（開発者向け）
 
 npmパッケージをインストールする必要はありません。リポジトリをクローンして依存関係をインストールするだけで使用できます。
 
@@ -97,51 +165,7 @@ Antigravityの設定ファイル（`mcp_config.json`）に以下を追加：
 > - `C:/path/to/RPGMakerMZ_MCP` を実際のプロジェクトパスに置き換えてください
 > - Windowsでは`C:/`のようにスラッシュ（`/`）を使用し、バックスラッシュ（`\`）は使用しないでください
 > - `npx tsx`を使用することで、TypeScriptファイルを直接実行できます（ビルド不要）
-> - **`cwd`プロパティが許可されていない場合**: トラブルシューティングのQ1を参照してください（npmパッケージの使用やバッチファイル経由の実行を推奨）
-
-### 方法2: npmパッケージからインストール（配布用）
-
-npmパッケージとして公開されているので、グローバルインストールも可能です：
-
-```bash
-npm install -g @rein634/rpg-maker-mz-mcp
-```
-
-インストール後、MCP設定ファイルに以下を追加：
-
-```json
-{
-  "mcpServers": {
-    "rpg-maker-mz": {
-      "command": "rpg-maker-mz-mcp"
-    }
-  }
-}
-```
-
-### 方法3: ビルドしてから実行（オプション）
-
-TypeScriptをJavaScriptにコンパイルしてから実行することも可能です：
-
-```bash
-npm run build
-```
-
-その後、`dist/index.js`を実行：
-
-```json
-{
-  "mcpServers": {
-    "rpg-maker-mz": {
-      "command": "node",
-      "args": ["C:/path/to/RPGMakerMZ_MCP/dist/index.js"],
-      "cwd": "C:/path/to/RPGMakerMZ_MCP"
-    }
-  }
-}
-```
-
-> 💡 **推奨**: 開発・自分で使う場合は**方法1**（ソースコードから直接実行）が最も簡単です。ビルドは不要で、コードを編集してすぐに試せます。
+> - **`cwd`プロパティが許可されていない場合**: トラブルシューティングのQ1を参照してください
 
 ---
 
@@ -515,7 +539,38 @@ search_events({ projectPath: "c:/path/to/project", query: "ポーション" });
 
 #### ステップ2: 正しい設定例を確認
 
-**npmパッケージを使用する場合（推奨）:**
+**推奨: ローカルインストール＋node直叩き（最も安定）**
+
+RPGツクールMZプロジェクトのルートディレクトリで：
+
+```bash
+npm install -D @rein634/rpg-maker-mz-mcp
+```
+
+設定ファイル：
+
+```json
+{
+  "mcpServers": {
+    "rpg-maker-mz": {
+      "command": "node",
+      "args": ["./node_modules/@rein634/rpg-maker-mz-mcp/dist/index.js"]
+    }
+  }
+}
+```
+
+> ✅ **この方法の利点**:
+> - グローバルPATHやラッパースクリプトに依存しない
+> - Windows / Mac / Linux 共通で動作
+> - ワークスペースの相対パスを使用するため、どのクライアントでも扱いやすい
+
+**オプションA: グローバルインストール（一部の環境で問題が発生する可能性あり）**
+
+```bash
+npm install -g @rein634/rpg-maker-mz-mcp
+```
+
 ```json
 {
   "mcpServers": {
@@ -526,7 +581,12 @@ search_events({ projectPath: "c:/path/to/project", query: "ポーション" });
 }
 ```
 
-**tsxを使用する場合（cwdが使える場合）:**
+> ⚠️ **注意**: Windows環境などでは、グローバルのラッパースクリプトが正しく起動されず、`Error: calling "initialize": EOF` が出ることがあります。その場合は、上記の**ローカルインストール方式**を使用してください。
+
+**オプションB: ソースコードから直接実行（開発者向け）**
+
+リポジトリをクローンして、tsxで直接実行：
+
 ```json
 {
   "mcpServers": {
@@ -539,58 +599,7 @@ search_events({ projectPath: "c:/path/to/project", query: "ポーション" });
 }
 ```
 
-**tsxを使用する場合（cwdプロパティが許可されていない場合）:**
-`cwd`プロパティが許可されていないMCPクライアントでは、以下のいずれかの方法を使用してください：
-
-**方法A: npmパッケージを使用（最も簡単）**
-```bash
-npm install -g @rein634/rpg-maker-mz-mcp
-```
-```json
-{
-  "mcpServers": {
-    "rpg-maker-mz": {
-      "command": "rpg-maker-mz-mcp"
-    }
-  }
-}
-```
-
-**方法B: バッチファイル経由で実行**
-プロジェクトルートに`run_mcp.bat`を作成：
-```batch
-@echo off
-cd /d C:/path/to/RPGMakerMZ_MCP
-npx tsx index.ts
-```
-設定ファイル：
-```json
-{
-  "mcpServers": {
-    "rpg-maker-mz": {
-      "command": "C:/path/to/RPGMakerMZ_MCP/run_mcp.bat"
-    }
-  }
-}
-```
-> 💡 **注意**: `C:/path/to/RPGMakerMZ_MCP`を実際のプロジェクトパスに置き換えてください。
-
-**方法C: 絶対パスでnodeを直接使用（ビルドが必要）**
-```bash
-cd C:/path/to/RPGMakerMZ_MCP
-npm run build
-```
-```json
-{
-  "mcpServers": {
-    "rpg-maker-mz": {
-      "command": "node",
-      "args": ["C:/path/to/RPGMakerMZ_MCP/dist/index.js"]
-    }
-  }
-}
-```
-> 💡 **注意**: `C:/path/to/RPGMakerMZ_MCP`を実際のプロジェクトパスに置き換えてください。
+> 💡 **注意**: `C:/path/to/RPGMakerMZ_MCP`を実際のプロジェクトパスに置き換えてください。`cwd`プロパティが許可されていない場合は、バッチファイル経由の実行を検討してください。
 
 **よくある間違い:**
 - ❌ **コメントを使用**: `// これはコメント` → JSONはコメント非対応
