@@ -159,7 +159,7 @@ export const Logger = {
         const formattedMessage = this._formatMessage(LogLevel.INFO, message + (args.length > 0 ? ' ' + args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ') : ''));
 
         if (config.enableConsole) {
-            console.log(formattedMessage);
+            console.error(formattedMessage);
         }
 
         await this._writeToFile(LOG_FILE_PATH, formattedMessage);
