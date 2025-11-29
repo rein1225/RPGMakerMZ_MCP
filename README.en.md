@@ -2,6 +2,17 @@
 
 ![Tests](https://github.com/rein1225/RPGMakerMZ_MCP/actions/workflows/test.yml/badge.svg)
 
+> ⚠ **Experimental / WIP**
+>
+> This is a **work-in-progress version (0.x)** of the MCP server for "letting AI work with RPG Maker MZ".  
+> Specifications are not yet finalized, and updates **may break things**.
+>
+> - Recommended for use with test projects only  
+> - Backup required before touching production data  
+> - Issues / PRs / Feedback are welcome
+>
+> This is a release for "people who want to try experimental stuff", so use at your own risk.
+
 ## TL;DR (Quick Start)
 
 ### Target Users
@@ -15,7 +26,7 @@
 
 ### 3-Step Quick Start
 
-1. **Install**: `npm install -g @rein1225/rpg-maker-mz-mcp`
+1. **Install**: `npm install -g @rein634/rpg-maker-mz-mcp`
 2. **Configure MCP**: Add the following to your MCP client's config file:
    ```json
    {
@@ -93,7 +104,7 @@ Add the following to your Antigravity config file (`mcp_config.json`):
 The package is published on npm, so you can install it globally:
 
 ```bash
-npm install -g @rein1225/rpg-maker-mz-mcp
+npm install -g @rein634/rpg-maker-mz-mcp
 ```
 
 After installation, add the following to your MCP config file:
@@ -538,7 +549,7 @@ Still, **avoid executing untrusted code**.
 ## Changelog
 
 ### v1.5.1 (2025-11-29)
-- npm publication preparation complete (@rein1225/rpg-maker-mz-mcp)
+- npm publication preparation complete (@rein634/rpg-maker-mz-mcp)
 - Test coverage improvements (added tests for undo.ts, backup.ts)
 - CI/CD configuration updates (coverage reports, E2E test automation)
 - playtest.ts refactoring (527 lines → 311 lines, ~41% reduction)

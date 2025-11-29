@@ -25,10 +25,18 @@ async function setupTempProject() {
     
     for (const file of files) {
         if (!file.endsWith('.bak')) {
-            await fs.copyFile(
-                path.join(sourceDataDir, file),
-                path.join(targetDataDir, file)
-            );
+            const sourceFile = path.join(sourceDataDir, file);
+            try {
+                const stat = await fs.stat(sourceFile);
+                if (stat.isFile()) {
+                    await fs.copyFile(
+                        sourceFile,
+                        path.join(targetDataDir, file)
+                    );
+                }
+            } catch {
+                // Skip if file doesn't exist or is not a file
+            }
         }
     }
     

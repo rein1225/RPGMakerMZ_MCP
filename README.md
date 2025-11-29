@@ -2,6 +2,17 @@
 
 ![Tests](https://github.com/rein1225/RPGMakerMZ_MCP/actions/workflows/test.yml/badge.svg)
 
+> ⚠ **実験版 / WIP**
+>
+> これは「RPGツクールMZをAIにいじらせるためのMCPサーバー」の **開発中バージョン (0.x)** です。  
+> 仕様はまだ固まっておらず、アップデートで **平気で壊れます**。
+>
+> - テスト用プロジェクトでの利用を推奨  
+> - 本番データを触らせる前にバックアップ必須  
+> - issue / PR / フィードバックは大歓迎
+>
+> 「試してみたい変態向け」のリリースなので、自己責任で遊んでください。
+
 ## TL;DR（超短縮版）
 
 ### 想定ユーザー
@@ -15,7 +26,7 @@
 
 ### 3行クイックスタート
 
-1. **インストール**: `npm install -g @rein1225/rpg-maker-mz-mcp`
+1. **インストール**: `npm install -g @rein634/rpg-maker-mz-mcp`
 2. **MCP設定**: クライアントの設定ファイルに以下を追加
    ```json
    {
@@ -93,7 +104,7 @@ Antigravityの設定ファイル（`mcp_config.json`）に以下を追加：
 npmパッケージとして公開されているので、グローバルインストールも可能です：
 
 ```bash
-npm install -g @rein1225/rpg-maker-mz-mcp
+npm install -g @rein634/rpg-maker-mz-mcp
 ```
 
 インストール後、MCP設定ファイルに以下を追加：
@@ -528,7 +539,7 @@ search_events({ projectPath: "c:/path/to/project", query: "ポーション" });
 
 **方法A: npmパッケージを使用（最も簡単）**
 ```bash
-npm install -g @rein1225/rpg-maker-mz-mcp
+npm install -g @rein634/rpg-maker-mz-mcp
 ```
 ```json
 {
@@ -605,7 +616,7 @@ npm run build
 
 ### Q5: npmパッケージが見つからない
 **解決策:** 
-- グローバルインストール: `npm install -g @rein1225/rpg-maker-mz-mcp`
+- グローバルインストール: `npm install -g @rein634/rpg-maker-mz-mcp`
 - パスが通っているか確認: `which rpg-maker-mz-mcp`（Linux/Mac）または `where rpg-maker-mz-mcp`（Windows）
 - ソースコードから直接実行する場合は、`npx tsx`を使用してください
 
@@ -633,10 +644,10 @@ npm run build
 本パッケージはnpmで公開されています：
 
 ```bash
-npm install -g @rein1225/rpg-maker-mz-mcp
+npm install -g @rein634/rpg-maker-mz-mcp
 ```
 
-パッケージ情報: https://www.npmjs.com/package/@rein1225/rpg-maker-mz-mcp
+パッケージ情報: https://www.npmjs.com/package/@rein634/rpg-maker-mz-mcp
 
 ### ファイル構成
 ```
@@ -783,7 +794,7 @@ MIT License
 ## 更新履歴
 
 ### v1.5.1 (2025-11-29)
-- npm公開準備完了（@rein1225/rpg-maker-mz-mcp）
+- npm公開準備完了（@rein634/rpg-maker-mz-mcp）
 - テストカバレッジ改善（undo.ts、backup.tsのテスト追加）
 - CI/CD設定更新（カバレッジレポート、E2Eテスト自動化）
 - playtest.tsのリファクタリング（527行→311行、約41%削減）
