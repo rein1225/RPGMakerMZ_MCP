@@ -11,30 +11,59 @@
 - ✅ **自動ID管理**: スイッチ・マップIDを自動解決/割り当て
 - ✅ **ハルシネーション防止**: MCP Resourcesで仕様を参照可能
 - ✅ **品質保証**: Zod Validationとアセット整合性チェック
+- ✅ **自動バックアップ**: ファイル書き込み前に自動バックアップ作成
+- ✅ **Undo機能**: 直前の変更を簡単に元に戻せる
+- ✅ **セキュリティ強化**: ホワイトリスト方式のコード実行、パストラバーサル対策
 
 ---
 
 ## セットアップ
 
-### 1. 依存関係のインストール
+### 方法1: npmパッケージからインストール（推奨）
+
+```bash
+npm install -g @rein1225/rpg-maker-mz-mcp
+```
+
+インストール後、MCP設定ファイルに以下を追加：
+
+```json
+{
+  "mcpServers": {
+    "rpg-maker-mz": {
+      "command": "rpg-maker-mz-mcp"
+    }
+  }
+}
+```
+
+### 方法2: ソースコードからインストール
+
+#### 1. リポジトリのクローン
+
+```bash
+git clone https://github.com/rein1225/RPGMakerMZ_MCP.git
+cd RPGMakerMZ_MCP
+```
+
+#### 2. 依存関係のインストール
 
 ```bash
 npm install
 ```
 
-### 1.5 TypeScriptビルド（オプション）
+#### 3. TypeScriptビルド（オプション）
 
 本プロジェクトはTypeScript化されていますが、実行時には`.ts`ファイルを直接使用できます（`tsx`や`ts-node`を使用する場合）。
 ビルドが必要な場合は以下のコマンドを実行してください：
 
 ```bash
-npm run build:utils    # utils/ ディレクトリのビルド
-npm run build:handlers # handlers/ ディレクトリのビルド
+npm run build  # 全ファイルをビルド（dist/に出力）
 ```
 
 詳細な移行計画は `docs/typescript-plan.md` を参照。
 
-### 2. MCPサーバーの起動
+### 3. MCPサーバーの起動
 
 Antigravityの設定ファイル（`mcp_config.json`）に以下を追加：
 
@@ -96,7 +125,7 @@ npm run build:index
 - `filename` (必須): ファイル名（例: 'Actors.json'）
 
 #### 4. `write_data_file` - データファイル書き込み
-**説明:** 指定したデータファイルにJSONコンテンツを書き込みます。
+**説明:** 指定したデータファイルにJSONコンテンツを書き込みます。書き込み前に自動的にバックアップが作成されます。
 **パラメータ:**
 - `projectPath` (必須): プロジェクトフォルダの絶対パス
 - `filename` (必須): ファイル名
@@ -256,9 +285,15 @@ npm run build:index
 
 #### 24. `inspect_game_state` - ゲーム状態検査
 **説明:** 実行中のゲーム（Puppeteer接続）から変数やスイッチの値を取得します。
-**警告:** 任意のJavaScriptコードを実行するため、信頼できるローカル環境でのみ使用してください。
+**セキュリティ:** ホワイトリスト方式を採用し、許可されたパターンのみ実行可能です。入力長制限（100文字）とID範囲チェック（1-9999）も実装されています。
+**許可されたパターン例:**
+- `$gameVariables.value(1)` - 変数の値を取得
+- `$gameSwitches.value(1)` - スイッチの値を取得
+- `$gameParty.gold()` - 所持金を取得
+- `$gameMap.mapId()` - 現在のマップIDを取得
+- `SceneManager._scene` - 現在のシーンを取得
 **パラメータ:**
-- `script` (必須): 評価するJavaScriptコード（例: `$gameVariables.value(1)`）
+- `script` (必須): 評価するJavaScriptコード（ホワイトリストに登録されたパターンのみ）
 - `port` (省略可): デバッグポート（デフォルト: 9222）
 
 ---
@@ -273,6 +308,26 @@ npm run build:index
 - `autoClose` (省略可): trueの場合、撮影後にゲームを自動終了します。（デフォルト: false）
 - `debugPort` (省略可): リモートデバッグ用ポート（例: 9222）。Puppeteerで接続する場合に使用します。
 - `startNewGame` (省略可): trueの場合、タイトル画面をスキップしてニューゲームを開始します。（デフォルト: false）
+
+### Phase 6: バックアップ・Undo機能
+
+#### 26. `undo_last_change` - 直前の変更を元に戻す
+**説明:** 最新のバックアップからファイルを復元します。`filename`を指定しない場合、最も最近変更されたファイルを自動的に復元します。
+**パラメータ:**
+- `projectPath` (必須): プロジェクトフォルダの絶対パス
+- `filename` (省略可): 復元するファイル名（例: 'Actors.json'）。省略時は最新変更ファイルを自動検出
+
+#### 27. `list_backups` - バックアップ一覧表示
+**説明:** 指定したファイル、または全ファイルのバックアップ一覧を表示します。
+**パラメータ:**
+- `projectPath` (必須): プロジェクトフォルダの絶対パス
+- `filename` (省略可): バックアップを表示するファイル名。省略時は全ファイルのバックアップを表示
+
+**バックアップ機能について:**
+- すべてのファイル書き込み操作（`write_data_file`、`add_actor`、`add_item`、`add_skill`、`write_plugin_code`、`update_plugins_config`、マップ操作など）で自動的にバックアップが作成されます
+- バックアップファイルは `.{timestamp}.bak` 形式で保存されます
+- 古いバックアップは自動的にクリーンアップされます（最新5件を保持）
+- エラー発生時は自動的にロールバックされます
 
 ### Puppeteerによる高度な自動テスト
 `run_playtest`で`debugPort`を指定することで、Puppeteerを使用してゲームのUI操作やシナリオテストを自動化できます。
@@ -337,12 +392,27 @@ search_events({ projectPath: "c:/path/to/project", query: "ポーション" });
 ### アーキテクチャ
 ```
 [AI] ← → [MCP Server] ← → [RPG Maker MZ Project]
-[AI] ← → [MCP Server] ← → [RPG Maker MZ Project]
-[AI] ← → [MCP Server] ← → [RPG Maker MZ Project]
-           ├─ Tools (26個)
+           ├─ Tools (28個)
            ├─ Resources (1個)
-           └─ Schemas (Zod Validation)
+           ├─ Schemas (Zod Validation)
+           └─ Backup System (自動バックアップ・ロールバック)
 ```
+
+### テストカバレッジ
+
+- **ユニットテスト**: Vitestを使用
+- **カバレッジレポート**: `npm run test:coverage` で生成
+- **CI/CD**: GitHub Actionsで自動テスト実行、Codecovでカバレッジ追跡
+
+### npm公開
+
+本パッケージはnpmで公開されています：
+
+```bash
+npm install -g @rein1225/rpg-maker-mz-mcp
+```
+
+パッケージ情報: https://www.npmjs.com/package/@rein1225/rpg-maker-mz-mcp
 
 ### ファイル構成
 ```
@@ -373,10 +443,19 @@ RPGツクールMZ＿MCP/
 ## セキュリティ上の注意
 
 本MCPサーバーは、ローカル開発環境での使用を想定しています。
-以下のツールは強力な権限を持つため、外部に公開された環境では使用しないでください：
 
-- `inspect_game_state`: 任意のJavaScriptコードを実行可能です。
-- ファイル操作関連ツール: パストラバーサル対策は行っていますが、予期せぬファイル操作のリスクがあります。
+### 実装済みのセキュリティ対策
+
+- **`inspect_game_state`**: ホワイトリスト方式を採用し、許可されたパターンのみ実行可能。入力長制限（100文字）とID範囲チェック（1-9999）も実装。
+- **パストラバーサル対策**: `path.normalize()`と`fs.realpath()`を使用してシンボリックリンク攻撃を防止。
+- **ファイル名検証**: プラグイン書き込み時は英数字・アンダースコア・ハイフンのみ許可。
+- **自動バックアップ**: すべてのファイル書き込み操作で自動バックアップを作成し、エラー時に自動ロールバック。
+
+### 推奨事項
+
+- 外部に公開された環境では使用しないでください。
+- 信頼できるローカル環境でのみ使用してください。
+- 重要な変更前には手動でバックアップを取ることを推奨します。
 
 ---
 
@@ -384,8 +463,20 @@ RPGツクールMZ＿MCP/
 MIT License
 
 ## 更新履歴
+### v1.5.1 (2025-01-XX)
+- npm公開準備完了（@rein1225/rpg-maker-mz-mcp）
+- テストカバレッジ改善（undo.ts、backup.tsのテスト追加）
+- CI/CD設定更新（カバレッジレポート、E2Eテスト自動化）
+- playtest.tsのリファクタリング（527行→311行、約41%削減）
+
+### v1.5.0 (2025-12-XX)
+- **TypeScript移行完了**: 全handlers層とエントリーポイントをTypeScript化
+- CI/CD統合: GitHub Actionsに型チェックを追加
+- 型安全性の大幅向上
+
 ### v1.4.1 (2025-01-XX)
 - undo_last_changeツールの実装
+- list_backupsツールの実装
 - toolSchemas.tsの型定義強化（plugins配列、conditionオブジェクトの詳細スキーマ）
 - 空のcatchブロックにLogger.debug追加
 - robotjsをdevDependenciesに移動
@@ -424,11 +515,47 @@ MIT License
 
 ## 追加機能ロードマップ
 
-以下の高優先度機能は別途仕様を策定し、順次実装予定です。詳細は `docs/feature-roadmap.md` を参照してください。
+以下の機能は別途仕様を策定し、順次実装予定です。詳細は `docs/feature-roadmap.md` を参照してください。
 
-| 優先度 | 機能 |
-| --- | --- |
-| 高 | `undo` 機能（JSONバックアップ / ロールバック） |
-| 中 | `validate_project` ツール（整合性チェック一括実行） |
-| 中 | バッチ処理（複数コマンドを単一リクエストで実行） |
-| 低 | WebSocket通知（リアルタイムログ / 状態通知） |
+| 優先度 | 機能 | ステータス |
+| --- | --- | --- |
+| ~~高~~ | ~~`undo` 機能（JSONバックアップ / ロールバック）~~ | ✅ 実装済み |
+| 中 | `validate_project` ツール（整合性チェック一括実行） | 📋 計画中 |
+| 中 | バッチ処理（複数コマンドを単一リクエストで実行） | 📋 計画中 |
+| 低 | WebSocket通知（リアルタイムログ / 状態通知） | 📋 計画中 |
+
+## 開発・貢献
+
+### テストの実行
+
+```bash
+# ユニットテスト
+npm test
+
+# カバレッジレポート生成
+npm run test:coverage
+
+# 型チェック
+npm run typecheck
+
+# E2Eテスト（手動実行）
+npm run test:e2e
+```
+
+### ビルド
+
+```bash
+# 全ファイルをビルド（dist/に出力）
+npm run build
+
+# 公開前の確認
+npm pack --dry-run
+```
+
+### コントリビューション
+
+プルリクエストを歓迎します！以下の点にご注意ください：
+
+- コードスタイル: TypeScriptのstrictモードに準拠
+- テスト: 新機能にはテストを追加してください
+- セキュリティ: ファイル操作やコード実行には適切な検証を実装してください
