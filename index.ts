@@ -17,12 +17,12 @@ import * as playtestHandlers from "./handlers/playtest.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Crash logging
-const logCrash = (type, error) => {
+const logCrash = (type: string, error: unknown): void => {
   const logPath = path.join(__dirname, "crash_log.txt");
-  const message = `[${new Date().toISOString()}] ${type}: ${error instanceof Error ? error.stack : error}\\n`;
+  const message = `[${new Date().toISOString()}] ${type}: ${error instanceof Error ? error.stack : String(error)}\\n`;
   try {
     fsSync.appendFileSync(logPath, message);
-  } catch (e) {
+  } catch (e: unknown) {
     // Last resort
   }
 };
@@ -51,7 +51,8 @@ const server = new Server(
 );
 
 // Tool mapping
-const toolMap = {
+type ToolHandler = (args: unknown) => Promise<unknown>;
+const toolMap: Record<string, ToolHandler> = {
   // Project tools
   "get_project_info": projectHandlers.getProjectInfo,
   "list_data_files": projectHandlers.listDataFiles,
@@ -109,27 +110,28 @@ server.setRequestHandler(ListResourcesRequestSchema, async () => {
 });
 
 server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
-  const { uri } = request.params;
+    const { uri } = request.params;
 
-  if (uri === "mz://docs/event_commands") {
-    try {
-      const refPath = path.join(__dirname, "resources", "event_commands.json");
-      const content = await fs.readFile(refPath, "utf-8");
-      return {
-        contents: [
-          {
-            uri: uri,
-            mimeType: "application/json",
-            text: content
-          }
-        ]
-      };
-    } catch (e) {
-      throw new Error(`Failed to read event commands reference: ${e.message}`);
+    if (uri === "mz://docs/event_commands") {
+        try {
+            const refPath = path.join(__dirname, "resources", "event_commands.json");
+            const content = await fs.readFile(refPath, "utf-8");
+            return {
+                contents: [
+                    {
+                        uri: uri,
+                        mimeType: "application/json",
+                        text: content
+                    }
+                ]
+            };
+        } catch (e: unknown) {
+            const err = e as Error;
+            throw new Error(`Failed to read event commands reference: ${err.message}`);
+        }
     }
-  }
 
-  throw new Error(`Unknown resource: ${uri}`);
+    throw new Error(`Unknown resource: ${uri}`);
 });
 
 // List Tools handler (imports tool schemas from ./toolSchemas.js)
@@ -143,27 +145,28 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 
 // Call Tool handler
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const { name, arguments: args } = request.params;
-  console.error("Processing tool:", name);
+    const { name, arguments: args } = request.params;
+    console.error("Processing tool:", name);
 
-  try {
-    const handler = toolMap[name];
-    if (!handler) {
-      throw new Error(`Unknown tool: ${name}`);
+    try {
+        const handler = toolMap[name];
+        if (!handler) {
+            throw new Error(`Unknown tool: ${name}`);
+        }
+        return await handler(args);
+    } catch (error: unknown) {
+        const err = error as Error;
+        console.error(`Error executing tool ${name}:`, error);
+        return {
+            content: [
+                {
+                    type: "text",
+                    text: `Error: ${err.message}`,
+                },
+            ],
+            isError: true,
+        };
     }
-    return await handler(args);
-  } catch (error) {
-    console.error(`Error executing tool ${name}:`, error);
-    return {
-      content: [
-        {
-          type: "text",
-          text: `Error: ${error.message}`,
-        },
-      ],
-      isError: true,
-    };
-  }
 });
 
 // Start server

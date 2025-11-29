@@ -2,7 +2,7 @@
   "name": "rpg-maker-mz-mcp",
   "version": "1.0.0",
   "description": "MCP server for RPG Maker MZ",
-  "main": "index.js",
+  "main": "index.ts",
   "scripts": {
     "test": "vitest",
     "test:run": "vitest run",
