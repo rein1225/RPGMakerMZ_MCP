@@ -497,7 +497,12 @@ search_events({ projectPath: "c:/path/to/project", query: "ポーション" });
 ## トラブルシューティング
 
 ### Q1: MCP設定でエラー「invalid character '-' after array element」または「プロパティ cwd は許可されていません」
+
+> ✅ **v0.1.2で修正**: stdoutへのログ出力をstderrに変更したため、MCPサーバー側が原因の`invalid character '-' after array element`エラーは解決されました。  
+> このエラーが発生する場合は、**v0.1.2以降のバージョンを使用**してください：`npm install -g @rein634/rpg-maker-mz-mcp@latest`
+
 **原因:** 
+- **MCPサーバー側の問題（v0.1.1以前）**: ログがstdoutに出力されていたため、JSON-RPCプロトコルが壊れていた
 - JSON構文エラー（コメント、末尾カンマなど）
 - 使用しているMCPクライアントが`cwd`プロパティをサポートしていない
 
@@ -793,47 +798,29 @@ MIT License
 
 ## 更新履歴
 
-### v1.5.1 (2025-11-29)
+### v0.1.2 (2025-11-29)
+- **重要修正**: stdoutへのログ出力をstderrに変更（MCPプロトコル準拠）
+- `invalid character '-' after array element`エラーを解決
+- Logger.info()がconsole.error()を使用するように変更
+- テストを更新（console.logスパイをconsole.errorに変更）
+
+### v0.1.1 (2025-11-29)
+- logger.jsがビルドに含まれるようにtsconfig.build.jsonを修正
 - npm公開準備完了（@rein634/rpg-maker-mz-mcp）
+
+### v0.1.0 (2025-11-29)
+- npm公開初回リリース
+- TypeScript移行完了: 全handlers層とエントリーポイントをTypeScript化
+- CI/CD統合: GitHub Actionsに型チェックを追加
+- undo_last_changeツール、list_backupsツールの実装
 - テストカバレッジ改善（undo.ts、backup.tsのテスト追加）
-- CI/CD設定更新（カバレッジレポート、E2Eテスト自動化）
 - playtest.tsのリファクタリング（527行→311行、約41%削減）
 - README改善（TL;DR追加、リクエスト例追加、ユースケース追加）
-
-### v1.5.0 (2025-11-29)
-- **TypeScript移行完了**: 全handlers層とエントリーポイントをTypeScript化
-- CI/CD統合: GitHub Actionsに型チェックを追加
-- 型安全性の大幅向上
-
-### v1.4.1 (2025-11-29)
-- undo_last_changeツールの実装
-- list_backupsツールの実装
-- toolSchemas.tsの型定義強化（plugins配列、conditionオブジェクトの詳細スキーマ）
-- 空のcatchブロックにLogger.debug追加
-- robotjsをdevDependenciesに移動
-
-### v1.4.0 (2025-11-29)
 - セキュリティ強化: パストラバーサル対策、任意コード実行の警告追加
-- エラーハンドリングの改善と統一
-- 非同期処理の安全性向上
-- マジックナンバーの排除
-
-### v1.3.0 (2025-11-29)
 - 新ツール追加: `add_choice`, `create_map`, `show_picture`, `check_assets_integrity`
 - ユニットテスト導入 (Vitest)
 - ロガーユーティリティ追加
-- 定数の外部化
-- TypeScript型定義追加
-
-### v1.2.0 (2025-11-29)
 - `run_playtest` にブラウザベースのフォールバック機能を追加（Game.exe不要）
-
-### v1.1.0 (2025-11-29)
-- 実装済みツールリストの整理 (22ツール)
-- `run_playtest` に `startNewGame` パラメータを追加
-
-### v1.0.0 (2025-11-29)
-- 初期リリース（当時は全16ツール構成）
 - MCP Resources実装
 - Zod Validation実装
 
