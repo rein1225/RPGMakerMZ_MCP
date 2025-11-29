@@ -375,15 +375,45 @@ search_events({ projectPath: "c:/path/to/project", query: "ポーション" });
 
 ## トラブルシューティング
 
-### Q1: スイッチが見つからないエラー
+### Q1: MCP設定でエラー「invalid character '-' after array element」
+**原因:** MCP設定ファイル（`mcp_config.json`）のJSON構文エラーです。
+**解決策:**
+1. JSONの構文を確認してください（コメント`//`や`#`は使用できません）
+2. 配列の最後の要素の後にカンマがないか確認してください
+3. 正しい設定例：
+
+```json
+{
+  "mcpServers": {
+    "rpg-maker-mz": {
+      "command": "npx",
+      "args": ["tsx", "C:/path/to/RPGMakerMZ_MCP/index.ts"],
+      "cwd": "C:/path/to/RPGMakerMZ_MCP"
+    }
+  }
+}
+```
+
+**よくある間違い:**
+- ❌ コメントを使用: `// これはコメント`（JSONはコメント非対応）
+- ❌ 末尾カンマ: `"args": ["tsx", "index.ts",]`（最後のカンマは不可）
+- ❌ シングルクォート: `'path'`（JSONはダブルクォートのみ）
+
+### Q2: スイッチが見つからないエラー
 **解決策:** 自動登録機能が動作します。System.jsonの書き込み権限を確認してください。
 
-### Q2: エディタとの競合
+### Q3: エディタとの競合
 **解決策:** MCP編集中はエディタを閉じるか、編集後にプロジェクトを開き直してください。
 
-### Q3: Game.exeが見つからない
+### Q4: Game.exeが見つからない
 **解決策:** デプロイメント機能でテストプレイ用パッケージを作成するか、Game.exeを手動配置してください。
 なお、v1.2.0以降ではGame.exeがない場合でもブラウザ経由でテストプレイが実行されるようになりました。
+
+### Q5: npmパッケージが見つからない
+**解決策:** 
+- グローバルインストール: `npm install -g @rein1225/rpg-maker-mz-mcp`
+- パスが通っているか確認: `which rpg-maker-mz-mcp`（Linux/Mac）または `where rpg-maker-mz-mcp`（Windows）
+- ソースコードから直接実行する場合は、`npx tsx`を使用してください
 
 ---
 
