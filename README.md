@@ -381,10 +381,26 @@ search_events({ projectPath: "c:/path/to/project", query: "ポーション" });
 ### Q1: MCP設定でエラー「invalid character '-' after array element」
 **原因:** MCP設定ファイル（`mcp_config.json`）のJSON構文エラーです。
 **解決策:**
-1. JSONの構文を確認してください（コメント`//`や`#`は使用できません）
-2. 配列の最後の要素の後にカンマがないか確認してください
-3. 正しい設定例：
 
+#### ステップ1: JSON構文を確認
+1. **コメントを削除**: JSONはコメント（`//`や`#`）をサポートしていません
+2. **末尾カンマを削除**: 配列やオブジェクトの最後の要素の後にカンマがあってはいけません
+3. **オンラインバリデーターで確認**: [JSONLint](https://jsonlint.com/) で構文を検証してください
+
+#### ステップ2: 正しい設定例を確認
+
+**npmパッケージを使用する場合（推奨）:**
+```json
+{
+  "mcpServers": {
+    "rpg-maker-mz": {
+      "command": "rpg-maker-mz-mcp"
+    }
+  }
+}
+```
+
+**tsxを使用する場合:**
 ```json
 {
   "mcpServers": {
@@ -398,9 +414,21 @@ search_events({ projectPath: "c:/path/to/project", query: "ポーション" });
 ```
 
 **よくある間違い:**
-- ❌ コメントを使用: `// これはコメント`（JSONはコメント非対応）
-- ❌ 末尾カンマ: `"args": ["tsx", "index.ts",]`（最後のカンマは不可）
-- ❌ シングルクォート: `'path'`（JSONはダブルクォートのみ）
+- ❌ **コメントを使用**: `// これはコメント` → JSONはコメント非対応
+- ❌ **末尾カンマ**: `"args": ["tsx", "index.ts",]` → 最後のカンマは不可
+- ❌ **シングルクォート**: `'path'` → JSONはダブルクォートのみ
+- ❌ **バックスラッシュ**: `C:\path\to\file` → スラッシュ（`/`）を使用
+
+#### ステップ3: 設定ファイルの場所を確認
+- **Antigravity**: `%APPDATA%\Antigravity\mcp_config.json` (Windows)
+- **Claude Desktop**: `%APPDATA%\Claude\claude_desktop_config.json` (Windows)
+- 設定ファイルのパスは使用しているMCPクライアントによって異なります
+
+#### ステップ4: デバッグ方法
+1. 設定ファイルをテキストエディタで開く
+2. [JSONLint](https://jsonlint.com/) にコピー＆ペーストして検証
+3. エラーメッセージの行番号を確認して該当箇所を修正
+4. 修正後、MCPクライアントを再起動
 
 ### Q2: スイッチが見つからないエラー
 **解決策:** 自動登録機能が動作します。System.jsonの書き込み権限を確認してください。

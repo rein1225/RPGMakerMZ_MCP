@@ -1,0 +1,99 @@
+{
+  "valid_examples": [
+    {
+      "description": "npmパッケージを使用する場合（最もシンプル）",
+      "config": {
+        "mcpServers": {
+          "rpg-maker-mz": {
+            "command": "rpg-maker-mz-mcp"
+          }
+        }
+      }
+    },
+    {
+      "description": "tsxを使用する場合（ソースコードから実行）",
+      "config": {
+        "mcpServers": {
+          "rpg-maker-mz": {
+            "command": "npx",
+            "args": ["tsx", "C:/path/to/RPGMakerMZ_MCP/index.ts"],
+            "cwd": "C:/path/to/RPGMakerMZ_MCP"
+          }
+        }
+      }
+    },
+    {
+      "description": "ビルド済みファイルを使用する場合",
+      "config": {
+        "mcpServers": {
+          "rpg-maker-mz": {
+            "command": "node",
+            "args": ["C:/path/to/RPGMakerMZ_MCP/dist/index.js"],
+            "cwd": "C:/path/to/RPGMakerMZ_MCP"
+          }
+        }
+      }
+    }
+  ],
+  "common_errors": [
+    {
+      "error": "invalid character '-' after array element",
+      "causes": [
+        "配列の最後の要素の後にカンマがある",
+        "コメント（// や #）が含まれている",
+        "不正な文字が含まれている"
+      ],
+      "wrong_examples": [
+        {
+          "description": "末尾カンマエラー",
+          "wrong": {
+            "mcpServers": {
+              "rpg-maker-mz": {
+                "command": "npx",
+                "args": ["tsx", "index.ts",],
+                "cwd": "C:/path/to/RPGMakerMZ_MCP"
+              }
+            }
+          },
+          "correct": {
+            "mcpServers": {
+              "rpg-maker-mz": {
+                "command": "npx",
+                "args": ["tsx", "index.ts"],
+                "cwd": "C:/path/to/RPGMakerMZ_MCP"
+              }
+            }
+          }
+        },
+        {
+          "description": "コメントエラー",
+          "wrong": {
+            "mcpServers": {
+              "rpg-maker-mz": {
+                "command": "npx",
+                // これはコメント（エラー！）
+                "args": ["tsx", "index.ts"]
+              }
+            }
+          },
+          "correct": {
+            "mcpServers": {
+              "rpg-maker-mz": {
+                "command": "npx",
+                "args": ["tsx", "index.ts"]
+              }
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "validation_tips": [
+    "JSONファイルはコメントをサポートしていません",
+    "配列の最後の要素の後にカンマを付けないでください",
+    "文字列は必ずダブルクォート（\"）で囲んでください（シングルクォートは不可）",
+    "パスはスラッシュ（/）を使用してください（Windowsでも）",
+    "オンラインJSONバリデーター（https://jsonlint.com/）で検証することを推奨します"
+  ]
+}
+
